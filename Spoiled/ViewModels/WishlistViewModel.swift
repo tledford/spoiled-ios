@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import OSLog
 
 @MainActor
 class WishlistViewModel: ObservableObject {
@@ -8,20 +9,61 @@ class WishlistViewModel: ObservableObject {
     @Published var groups: [Group]?
     @Published var wishlistItems: [WishlistItem]?
     @Published var giftIdeas: [GiftIdea]?
-    
-    init() {
-        loadMockData()
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+
+    private let bootstrapService: BootstrapService
+    private let usersService: UsersService
+
+    #if DEBUG
+    private static let logger = Logger(subsystem: "Spoiled", category: "WishlistViewModel")
+    private func dlog(_ message: String) { WishlistViewModel.logger.debug("\(message)") }
+    private func elog(_ message: String) { WishlistViewModel.logger.error("\(message)") }
+    #endif
+
+    init(bootstrapService: BootstrapService = BootstrapService(), usersService: UsersService = UsersService()) {
+        self.bootstrapService = bootstrapService
+        self.usersService = usersService
+        Task { await load() }
     }
-    
-    private func loadMockData() {
-        let mockData = MockDataService.createMockData()
-        self.currentUser = mockData.currentUser
-        self.kids = mockData.kids
-        self.groups = mockData.groups
-        self.wishlistItems = mockData.wishlistItems
-        self.giftIdeas = mockData.giftIdeas
+
+    func load() async {
+        #if DEBUG
+        dlog("Starting bootstrap request: baseURL=\(AppConfig.api.baseURL.absoluteString) path=/bootstrap userId=\(AppConfig.devUserId.uuidString)")
+        #endif
+        isLoading = true
+        errorMessage = nil
+        do {
+//            #if DEBUG
+//            let mockData = MockDataService.createMockData()
+//            self.currentUser = mockData.currentUser
+//            self.kids = mockData.kids
+//            self.groups = mockData.groups
+//            self.wishlistItems = mockData.wishlistItems
+//            self.giftIdeas = mockData.giftIdeas
+//            #else
+            let data = try await bootstrapService.load()
+//            #endif
+            #if DEBUG
+            dlog("Bootstrap success: user=\(data.0.id.uuidString) groups=\(data.1.count) kids=\(data.2.count) myItems=\(data.3.count) giftIdeas=\(data.4.count)")
+            #endif
+            self.currentUser = data.0
+            self.groups = data.1
+            self.kids = data.2
+            self.wishlistItems = data.3
+            self.giftIdeas = data.4
+        } catch {
+            #if DEBUG
+            elog("Bootstrap failed: \(String(describing: error))")
+            #endif
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+        }
+        isLoading = false
+        #if DEBUG
+        dlog("Bootstrap finished. isLoading=false")
+        #endif
     }
-    
+
     func toggleItemPurchased(_ item: WishlistItem, groupId: UUID?, groupMemberId: UUID?) {
         if let groupId = groupId,
            let groupIndex = groups?.firstIndex(where: { $0.id == groupId }),
@@ -111,18 +153,17 @@ class WishlistViewModel: ObservableObject {
             //TODO: send delete request to API with itemId
         }
     }
-    
-    func updateProfile(name: String, email: String, birthdate: Date, sizes: Sizes) {
-        if var user = currentUser {
-            user.name = name
-            user.email = email
-            user.birthdate = birthdate
-            user.sizes = sizes
-            
-            currentUser = user
-            
-            //TODO: send update to API
-        }
+
+    func saveProfile(name: String, email: String, birthdate: Date, sizes: Sizes) async throws {
+        guard let userId = currentUser?.id else { return }
+        try await usersService.updateUser(userId: userId, name: name, email: email, birthdate: birthdate, sizes: sizes)
+        // Update local state after successful save
+        var updated = currentUser
+        updated?.name = name
+        updated?.email = email
+        updated?.birthdate = birthdate
+        updated?.sizes = sizes
+        currentUser = updated
     }
     
     func updateGroup(_ group: Group, newName: String) {

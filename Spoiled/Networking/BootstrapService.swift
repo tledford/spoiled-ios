@@ -1,0 +1,137 @@
+import Foundation
+
+// Mirrors /api/v1/bootstrap response shape (tolerant decoding)
+struct BootstrapResponse: Decodable {
+    let currentUser: APIUser
+    let groups: [APIGroup]
+    let kids: [APIKid]
+    let wishlistItems: [APIWishlistItem]
+    let giftIdeas: [APIGiftIdea]
+}
+
+struct APIUser: Decodable {
+    let id: UUID
+    let name: String
+    let email: String
+    let birthdate: String? // Accept various formats/null; we'll parse later
+    let sizes: Sizes
+}
+
+struct APIGroup: Decodable {
+    let id: UUID
+    let name: String
+    let isAdmin: Bool
+    let members: [APIMember]
+}
+
+struct APIMember: Decodable {
+    let id: UUID
+    let name: String
+    let wishlistItems: [APIWishlistItem]
+}
+
+struct APIKid: Decodable {
+    let id: UUID
+    let name: String
+    let birthdate: String? // Accept various formats/null; we'll parse later
+    let wishlistItems: [APIWishlistItem]
+    let sizes: Sizes
+}
+
+struct APIWishlistItem: Decodable {
+    let id: UUID
+    let name: String
+    let description: String?
+    let price: Double?
+    let link: String? // decode as string to avoid throwing on invalid URLs
+    let isPurchased: Bool?
+    let assignedGroupIds: [UUID]?
+}
+
+struct APIGiftIdea: Decodable {
+    let id: UUID
+    let personName: String
+    let giftName: String
+    let url: String? // decode as string to avoid throwing on invalid URLs
+    let notes: String?
+    let isPurchased: Bool?
+}
+
+struct BootstrapRequest: APIRequest { typealias Response = BootstrapResponse; let path = "/bootstrap" }
+
+struct BootstrapService {
+    let client: APIClient
+    init(client: APIClient = APIClient()) { self.client = client }
+
+    func load() async throws -> (User, [Group], [Kid], [WishlistItem], [GiftIdea]) {
+        do {
+            let response = try await client.execute(BootstrapRequest())
+            // Map API models to app models
+            let user = User(id: response.currentUser.id,
+                            name: response.currentUser.name,
+                            email: response.currentUser.email,
+                            birthdate: parseDate(response.currentUser.birthdate) ?? Date(),
+                            sizes: response.currentUser.sizes)
+
+            let groups: [Group] = response.groups.map { g in
+                let members: [GroupMember] = g.members.map { m in
+                    GroupMember(id: m.id, name: m.name, wishlistItems: m.wishlistItems.map { $0.asAppModel() })
+                }
+                return Group(id: g.id, name: g.name, isAdmin: g.isAdmin, members: members)
+            }
+
+            let kids: [Kid] = response.kids.map { k in
+                Kid(id: k.id, name: k.name, birthdate: parseDate(k.birthdate) ?? Date(), wishlistItems: k.wishlistItems.map { $0.asAppModel() }, sizes: k.sizes)
+            }
+
+            let myItems: [WishlistItem] = response.wishlistItems.map { $0.asAppModel() }
+            let ideas: [GiftIdea] = response.giftIdeas.map { g in
+                GiftIdea(
+                    id: g.id,
+                    personName: g.personName,
+                    giftName: g.giftName,
+                    url: g.url.flatMap { URL(string: $0) },
+                    notes: g.notes ?? "",
+                    isPurchased: g.isPurchased ?? false
+                )
+            }
+
+            return (user, groups, kids, myItems, ideas)
+        } catch let e as DecodingError {
+            throw APIError.decoding(e)
+        }
+    }
+}
+
+private extension APIWishlistItem {
+    func asAppModel() -> WishlistItem {
+        WishlistItem(
+            id: id,
+            name: name,
+            description: description ?? "",
+            price: price,
+            link: link.flatMap { URL(string: $0) },
+            isPurchased: isPurchased ?? false,
+            assignedGroupIds: assignedGroupIds ?? []
+        )
+    }
+}
+
+// MARK: - Tolerant date parsing
+private func parseDate(_ raw: String?) -> Date? {
+    guard let raw = raw, !raw.isEmpty else { return nil }
+    // Try ISO8601 with and without fractional seconds
+    let iso = ISO8601DateFormatter()
+    if let d = iso.date(from: raw) { return d }
+    iso.formatOptions.insert(.withFractionalSeconds)
+    if let d = iso.date(from: raw) { return d }
+    // Try common yyyy-MM-dd
+    let df = DateFormatter()
+    df.locale = Locale(identifier: "en_US_POSIX")
+    df.timeZone = TimeZone(secondsFromGMT: 0)
+    df.dateFormat = "yyyy-MM-dd"
+    if let d = df.date(from: raw) { return d }
+    // Try unix seconds
+    if let seconds = TimeInterval(raw) { return Date(timeIntervalSince1970: seconds) }
+    return nil
+}

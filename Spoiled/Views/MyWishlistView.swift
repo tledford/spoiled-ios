@@ -34,6 +34,7 @@ struct MyWishlistView: View {
             .sheet(isPresented: $showingAddItemSheet) {
                 AddWishlistItemView(isForKid: selectedTab == "Kids Items")
             }
+            .refreshable { await viewModel.load() }
         }
     }
 }
@@ -136,4 +137,4 @@ struct WishlistItemRow: View {
             }
         }
     }
-} 
+}

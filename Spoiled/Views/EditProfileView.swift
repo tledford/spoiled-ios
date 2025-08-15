@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var toastCenter: ToastCenter
     @ObservedObject var viewModel: WishlistViewModel
     
     @State private var name: String
@@ -12,6 +13,9 @@ struct EditProfileView: View {
     @State private var shoesSize: String
     @State private var sweatshirtSize: String
     @State private var hatSize: String
+
+    @State private var isSaving = false
+    @State private var errorMessage: String?
     
     init(viewModel: WishlistViewModel) {
         self.viewModel = viewModel
@@ -28,6 +32,9 @@ struct EditProfileView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let msg = errorMessage {
+                    Text(msg).foregroundStyle(.red)
+                }
                 Section("Personal Info") {
                     TextField("Name", text: $name)
                     TextField("Email", text: $email)
@@ -67,21 +74,21 @@ struct EditProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveProfile()
-                    }
-                    .disabled(name.isEmpty || email.isEmpty)
+                    Button(isSaving ? "Saving…" : "Save") { Task { await saveProfile() } }
+                        .disabled(isSaving || name.isEmpty || email.isEmpty)
                 }
             }
         }
     }
     
-    private func saveProfile() {
+    private func saveProfile() async {
+        errorMessage = nil
+        isSaving = true
+        defer { isSaving = false }
         let sizes = Sizes(
             shirt: shirtSize,
             pants: pantsSize,
@@ -89,14 +96,14 @@ struct EditProfileView: View {
             sweatshirt: sweatshirtSize,
             hat: hatSize
         )
-        
-        // In a real app, you'd update the user profile in your backend
-        viewModel.updateProfile(
-            name: name,
-            email: email,
-            birthdate: birthdate,
-            sizes: sizes
-        )
-        dismiss()
+        do {
+            try await viewModel.saveProfile(name: name, email: email, birthdate: birthdate, sizes: sizes)
+            toastCenter.success("Profile updated")
+            dismiss()
+        } catch {
+            let msg = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            errorMessage = msg
+            toastCenter.error(msg)
+        }
     }
-} 
+}
