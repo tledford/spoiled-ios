@@ -3,6 +3,7 @@ import SwiftUI
 struct EditKidView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     let kidIndex: Int
     
     @State private var kidName: String
@@ -65,10 +66,8 @@ struct EditKidView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    saveKid()
-                }
-                .disabled(kidName.isEmpty)
+                Button("Save") { Task { await saveKid() } }
+                .disabled(kidName.isEmpty || viewModel.isSavingKid)
             }
         }
     }
@@ -85,7 +84,7 @@ struct EditKidView: View {
         }
     }
     
-    private func saveKid() {
+    private func saveKid() async {
         let currentKid = viewModel.kids![kidIndex]
         let updatedKid = Kid(
             id: currentKid.id,
@@ -100,8 +99,12 @@ struct EditKidView: View {
                 hat: hatSize
             )
         )
-        viewModel.kids?[kidIndex] = updatedKid
-        // TODO: send to API
-        dismiss()
+        let ok = await viewModel.updateKid(updatedKid)
+        if ok {
+            toastCenter.success("Kid updated")
+            dismiss()
+        } else {
+            toastCenter.error(viewModel.errorMessage ?? "Failed to update kid")
+        }
     }
 } 

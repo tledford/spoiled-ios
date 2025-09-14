@@ -26,13 +26,30 @@ struct Sizes: Codable, Hashable {
     var shoes: String
     var sweatshirt: String
     var hat: String
-    
+
     init(shirt: String = "", pants: String = "", shoes: String = "", sweatshirt: String = "", hat: String = "") {
         self.shirt = shirt
         self.pants = pants
         self.shoes = shoes
         self.sweatshirt = sweatshirt
         self.hat = hat
+    }
+
+    // Be tolerant of empty/missing fields when decoding from API
+    private enum CodingKeys: String, CodingKey { case shirt, pants, shoes, sweatshirt, hat }
+
+    init(from decoder: Decoder) throws {
+        // If sizes is null or not an object, default to empty strings
+        guard let container = try? decoder.container(keyedBy: CodingKeys.self) else {
+            self.init()
+            return
+        }
+        let shirt = try container.decodeIfPresent(String.self, forKey: .shirt) ?? ""
+        let pants = try container.decodeIfPresent(String.self, forKey: .pants) ?? ""
+        let shoes = try container.decodeIfPresent(String.self, forKey: .shoes) ?? ""
+        let sweatshirt = try container.decodeIfPresent(String.self, forKey: .sweatshirt) ?? ""
+        let hat = try container.decodeIfPresent(String.self, forKey: .hat) ?? ""
+        self.init(shirt: shirt, pants: pants, shoes: shoes, sweatshirt: sweatshirt, hat: hat)
     }
 }
 

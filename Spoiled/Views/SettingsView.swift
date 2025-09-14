@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var viewModel: WishlistViewModel
     @State private var showingEditProfile = false
+    @State private var showDebug = false
     
     var body: some View {
         NavigationStack {
@@ -38,8 +39,15 @@ struct SettingsView: View {
                         Text("Sign Out")
                     }
                 }
+
+                #if DEBUG
+                Section("Developer") {
+                    NavigationLink("Debug Tools") { DebugToolsView() }
+                }
+                #endif
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileView(viewModel: viewModel)
             }

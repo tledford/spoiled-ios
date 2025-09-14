@@ -3,6 +3,7 @@ import SwiftUI
 struct AddKidView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var kidName: String = ""
     @State private var birthdate: Date = Date()
     @State private var shirtSize: String = ""
@@ -58,16 +59,14 @@ struct AddKidView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveKid()
-                    }
-                    .disabled(kidName.isEmpty)
+                    Button("Save") { Task { await saveKid() } }
+                    .disabled(kidName.isEmpty || viewModel.isSavingKid)
                 }
             }
         }
     }
     
-    private func saveKid() {
+    private func saveKid() async {
         let newKid = Kid(
             name: kidName,
             birthdate: birthdate,
@@ -79,8 +78,12 @@ struct AddKidView: View {
                 hat: hatSize
             )
         )
-        viewModel.kids?.append(newKid)
-        // TODO: send to API
-        dismiss()
+        let ok = await viewModel.addKid(newKid)
+        if ok {
+            toastCenter.success("Kid added")
+            dismiss()
+        } else {
+            toastCenter.error(viewModel.errorMessage ?? "Failed to add kid")
+        }
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct EditGroupView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var name: String
     @State private var showingDeleteMemberAlert = false
     @State private var memberToDelete: GroupMember?
@@ -51,7 +52,16 @@ struct EditGroupView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
-                    saveGroup()
+                    Task {
+                        let ok = await viewModel.updateGroup(group, newName: name)
+                        if ok {
+                            await viewModel.refreshAll()
+                            toastCenter.success("Group updated")
+                            dismiss()
+                        } else {
+                            toastCenter.error(viewModel.errorMessage ?? "Failed to update group")
+                        }
+                    }
                 }
                 .disabled(name.isEmpty)
             }
@@ -62,7 +72,15 @@ struct EditGroupView: View {
             }
             Button("Remove", role: .destructive) {
                 if let member = memberToDelete {
-                    viewModel.removeMemberFromGroup(member, from: group)
+                    Task {
+                        let ok = await viewModel.removeMemberFromGroup(member, from: group)
+                        if ok {
+                            await viewModel.refreshAll()
+                            toastCenter.success("Member removed")
+                        } else {
+                            toastCenter.error(viewModel.errorMessage ?? "Failed to remove member")
+                        }
+                    }
                 }
                 memberToDelete = nil
             }
@@ -73,18 +91,30 @@ struct EditGroupView: View {
         }
         .sheet(isPresented: $showingAddMemberSheet) {
             AddGroupMemberView(group: group)
+                .environmentObject(viewModel)
+                .environmentObject(toastCenter)
         }
     }
     
     private func saveGroup() {
-        viewModel.updateGroup(group, newName: name)
-        dismiss()
+        // kept for potential direct calls; current Save button uses the async Task above
+        Task {
+            let ok = await viewModel.updateGroup(group, newName: name)
+            if ok {
+                await viewModel.refreshAll()
+                toastCenter.success("Group updated")
+                dismiss()
+            } else {
+                toastCenter.error(viewModel.errorMessage ?? "Failed to update group")
+            }
+        }
     }
 }
 
 struct AddGroupMemberView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var email = ""
     @State private var showingInvalidEmailAlert = false
     
@@ -122,8 +152,16 @@ struct AddGroupMemberView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
                         if isValidEmail {
-                            viewModel.addMemberToGroup(email: email, to: group)
-                            dismiss()
+                            Task {
+                                let ok = await viewModel.addMemberToGroup(email: email, to: group)
+                                if ok {
+                                    await viewModel.refreshAll()
+                                    toastCenter.success("Member added")
+                                    dismiss()
+                                } else {
+                                    toastCenter.error(viewModel.errorMessage ?? "Failed to add member")
+                                }
+                            }
                         } else {
                             showingInvalidEmailAlert = true
                         }

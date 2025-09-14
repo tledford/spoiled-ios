@@ -28,6 +28,13 @@ struct APIMember: Decodable {
     let id: UUID
     let name: String
     let wishlistItems: [APIWishlistItem]
+    let kids: [APIKidReference]? // Optional nested kids for context
+}
+
+struct APIKidReference: Decodable {
+    let id: UUID
+    let name: String
+    let wishlistItems: [APIWishlistItem]
 }
 
 struct APIKid: Decodable {
@@ -45,6 +52,8 @@ struct APIWishlistItem: Decodable {
     let price: Double?
     let link: String? // decode as string to avoid throwing on invalid URLs
     let isPurchased: Bool?
+    let purchasedAt: String?
+    let purchasedBy: UUID?
     let assignedGroupIds: [UUID]?
 }
 
@@ -70,18 +79,21 @@ struct BootstrapService {
             let user = User(id: response.currentUser.id,
                             name: response.currentUser.name,
                             email: response.currentUser.email,
-                            birthdate: parseDate(response.currentUser.birthdate) ?? Date(),
+                            birthdate: parseAPIDate(response.currentUser.birthdate) ?? Date(),
                             sizes: response.currentUser.sizes)
 
             let groups: [Group] = response.groups.map { g in
                 let members: [GroupMember] = g.members.map { m in
-                    GroupMember(id: m.id, name: m.name, wishlistItems: m.wishlistItems.map { $0.asAppModel() })
+                    let kidModels: [GroupMemberKid] = (m.kids ?? []).map { k in
+                        GroupMemberKid(id: k.id, name: k.name, wishlistItems: k.wishlistItems.map { $0.asAppModel() })
+                    }
+                    return GroupMember(id: m.id, name: m.name, wishlistItems: m.wishlistItems.map { $0.asAppModel() }, kids: kidModels)
                 }
                 return Group(id: g.id, name: g.name, isAdmin: g.isAdmin, members: members)
             }
 
             let kids: [Kid] = response.kids.map { k in
-                Kid(id: k.id, name: k.name, birthdate: parseDate(k.birthdate) ?? Date(), wishlistItems: k.wishlistItems.map { $0.asAppModel() }, sizes: k.sizes)
+                Kid(id: k.id, name: k.name, birthdate: parseAPIDate(k.birthdate) ?? Date(), wishlistItems: k.wishlistItems.map { $0.asAppModel() }, sizes: k.sizes)
             }
 
             let myItems: [WishlistItem] = response.wishlistItems.map { $0.asAppModel() }
@@ -112,26 +124,11 @@ private extension APIWishlistItem {
             price: price,
             link: link.flatMap { URL(string: $0) },
             isPurchased: isPurchased ?? false,
+            purchasedAt: parseAPIDate(purchasedAt),
+            purchasedBy: purchasedBy,
             assignedGroupIds: assignedGroupIds ?? []
         )
     }
 }
 
-// MARK: - Tolerant date parsing
-private func parseDate(_ raw: String?) -> Date? {
-    guard let raw = raw, !raw.isEmpty else { return nil }
-    // Try ISO8601 with and without fractional seconds
-    let iso = ISO8601DateFormatter()
-    if let d = iso.date(from: raw) { return d }
-    iso.formatOptions.insert(.withFractionalSeconds)
-    if let d = iso.date(from: raw) { return d }
-    // Try common yyyy-MM-dd
-    let df = DateFormatter()
-    df.locale = Locale(identifier: "en_US_POSIX")
-    df.timeZone = TimeZone(secondsFromGMT: 0)
-    df.dateFormat = "yyyy-MM-dd"
-    if let d = df.date(from: raw) { return d }
-    // Try unix seconds
-    if let seconds = TimeInterval(raw) { return Date(timeIntervalSince1970: seconds) }
-    return nil
-}
+// (Removed local parseDate; using shared parseAPIDate in Utils.)

@@ -3,6 +3,7 @@ import SwiftUI
 struct AddGiftIdeaView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var personName = ""
     @State private var giftName = ""
     @State private var urlString = ""
@@ -12,15 +13,13 @@ struct AddGiftIdeaView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("Person's Name", text: $personName)
-                    TextField("Gift Name", text: $giftName)
-                    TextField("URL", text: $urlString)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                    TextField("Notes", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
-                    Toggle("Purchased", isOn: $isPurchased)
+                Section { 
+                    GiftIdeaFormFields(personName: $personName,
+                                       giftName: $giftName,
+                                       urlString: $urlString,
+                                       notes: $notes,
+                                       isPurchased: $isPurchased,
+                                       showPurchasedToggle: true)
                 }
             }
             .navigationTitle("Add Gift Idea")
@@ -33,15 +32,15 @@ struct AddGiftIdeaView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        addGiftIdea()
+                        Task { await addGiftIdea() }
                     }
-                    .disabled(personName.isEmpty || giftName.isEmpty)
+                    .disabled(personName.isEmpty || giftName.isEmpty || viewModel.isSavingGiftIdea)
                 }
             }
         }
     }
     
-    private func addGiftIdea() {
+    private func addGiftIdea() async {
         let giftIdea = GiftIdea(
             personName: personName,
             giftName: giftName,
@@ -49,7 +48,12 @@ struct AddGiftIdeaView: View {
             notes: notes,
             isPurchased: isPurchased
         )
-        viewModel.addGiftIdea(giftIdea)
-        dismiss()
+        let ok = await viewModel.addGiftIdea(giftIdea)
+        if ok {
+            toastCenter.success("Gift idea added")
+            dismiss()
+        } else {
+            toastCenter.error(viewModel.errorMessage ?? "Failed to add gift idea")
+        }
     }
 } 

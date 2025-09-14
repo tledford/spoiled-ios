@@ -9,12 +9,31 @@ struct WishlistItemDetailView: View {
     let groupId: UUID?
     let groupMemberId: UUID?
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     
+    // Resolve latest item from the view model so UI reflects changes post-toggle
+    private var currentItem: WishlistItem {
+        if isInGroupView, let groupId, let gi = viewModel.groups?.firstIndex(where: { $0.id == groupId }) {
+            if let kidId,
+               let memberIndex = viewModel.groups?[gi].members.firstIndex(where: { member in member.kids.contains(where: { $0.id == kidId && $0.wishlistItems.contains(where: { $0.id == item.id }) }) }),
+               let kidx = viewModel.groups?[gi].members[memberIndex].kids.firstIndex(where: { $0.id == kidId }),
+               let ii = viewModel.groups?[gi].members[memberIndex].kids[kidx].wishlistItems.firstIndex(where: { $0.id == item.id }) {
+                return viewModel.groups![gi].members[memberIndex].kids[kidx].wishlistItems[ii]
+            }
+            if let memberUserId = groupMemberId,
+               let memberIndex = viewModel.groups?[gi].members.firstIndex(where: { $0.id == memberUserId }),
+               let ii = viewModel.groups?[gi].members[memberIndex].wishlistItems.firstIndex(where: { $0.id == item.id }) {
+                return viewModel.groups![gi].members[memberIndex].wishlistItems[ii]
+            }
+        }
+        return item
+    }
+
     var assignedGroups: [Group] {
-        viewModel.groups?.filter { item.assignedGroupIds.contains($0.id) } ?? []
+        viewModel.groups?.filter { currentItem.assignedGroupIds.contains($0.id) } ?? []
     }
     
     var body: some View {
@@ -22,22 +41,22 @@ struct WishlistItemDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // Link Preview Card
-                    if let link = item.link {
+                    if let link = currentItem.link {
                         LinkPreviewView(url: link)
                     }
                     
                     // Price Card
-                    if let price = item.price {
+                    if let price = currentItem.price {
                         PriceCard(price: price)
                     }
                     
                     // Description Card
-                    if !item.description.isEmpty {
+                    if !currentItem.description.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Description")
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
-                            Text(item.description)
+                            Text(currentItem.description)
                                 .font(.body)
                         }
                         .padding()
@@ -66,26 +85,52 @@ struct WishlistItemDetailView: View {
                         .background(Color(.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    } else if !isInGroupView && assignedGroups.isEmpty {
+                        HStack(spacing: 8) {
+                            Image(systemName: "lock.fill")
+                                .foregroundStyle(.secondary)
+                            Text("Not shared with any groups")
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
                     }
                     
                     // Purchase Button
                     if isInGroupView {
+                        // Determine disable state
+                        let purchasedByOther: Bool = {
+                            guard currentItem.isPurchased, let purchaser = currentItem.purchasedBy, purchaser != viewModel.currentUser?.id else { return false }
+                            return true
+                        }()
                         Button {
-                            viewModel.toggleItemPurchased(item, groupId: groupId, groupMemberId: groupMemberId)
+                            viewModel.toggleItemPurchased(currentItem, groupId: groupId, groupMemberId: groupMemberId, kidId: kidId)
                         } label: {
-                            HStack {
-                                Text(item.isPurchased ? "Mark as Not Purchased" : "Mark as Purchased")
-                                    .font(.headline)
+                            HStack(alignment: .center, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(currentItem.isPurchased ? (purchasedByOther ? "Already Purchased" : "Mark as Not Purchased") : "Mark as Purchased")
+                                        .font(.headline)
+                                    if purchasedByOther {
+                                        Text("Purchased by another group member")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
                                 Spacer()
-                                if item.isPurchased {
+                                if currentItem.isPurchased {
                                     Image(systemName: "checkmark.circle.fill")
                                 }
                             }
                             .padding()
                             .foregroundColor(.white)
-                            .background(item.isPurchased ? Color.green : Color.accentColor)
+                            .background(currentItem.isPurchased ? Color.green : Color.accentColor)
+                            .opacity(purchasedByOther ? 0.6 : 1.0)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
+                        .disabled(purchasedByOther)
                     }
 
                     // Delete button section
@@ -106,7 +151,7 @@ struct WishlistItemDetailView: View {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle(item.name)
+            .navigationTitle(currentItem.name)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -124,8 +169,11 @@ struct WishlistItemDetailView: View {
             .alert("Delete Item", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
-                    viewModel.deleteWishlistItem(item, kidId: kidId)
-                    dismiss()
+                    Task {
+                        let ok = await viewModel.deleteWishlistItem(item, kidId: kidId)
+                        if ok { toastCenter.success("Item deleted"); dismiss() }
+                        else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
+                    }
                 }
             } message: {
                 Text("Are you sure you want to delete this item? This action cannot be undone.")

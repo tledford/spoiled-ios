@@ -49,11 +49,15 @@ struct APIClient {
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
 
         if !(200..<300).contains(http.statusCode) {
-            // Try to decode error payload
-            if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
-                throw APIError.http(status: http.statusCode, code: apiError.error.code, message: apiError.error.message)
+            let requestId = http.allHeaderFields["X-Request-Id"] as? String
+            // Try to decode error payload and optional reqId passthrough
+            if let apiErrorWithReq = try? JSONDecoder().decode(APIErrorResponseWithReqId.self, from: data) {
+                throw APIError.http(status: http.statusCode, code: apiErrorWithReq.error.code, message: apiErrorWithReq.error.message, requestId: apiErrorWithReq.reqId ?? requestId, rawBody: nil)
+            } else if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+                throw APIError.http(status: http.statusCode, code: apiError.error.code, message: apiError.error.message, requestId: requestId, rawBody: nil)
             }
-            throw APIError.http(status: http.statusCode, code: "HTTP_\(http.statusCode)", message: String(data: data, encoding: .utf8) ?? "Unknown error")
+            let fallback = String(data: data, encoding: .utf8)
+            throw APIError.http(status: http.statusCode, code: "HTTP_\(http.statusCode)", message: fallback ?? "Unknown error", requestId: requestId, rawBody: fallback)
         }
 
         let decoder = JSONDecoder()
@@ -63,15 +67,17 @@ struct APIClient {
 }
 
 struct APIErrorResponse: Decodable { let error: APIErrorPayload }
+struct APIErrorResponseWithReqId: Decodable { let error: APIErrorPayload; let reqId: String? }
 struct APIErrorPayload: Decodable { let code: String; let message: String }
 
 enum APIError: Error, LocalizedError {
-    case http(status: Int, code: String, message: String)
+    case http(status: Int, code: String, message: String, requestId: String?, rawBody: String?)
     case decoding(Error)
 
     var errorDescription: String? {
         switch self {
-        case let .http(status, code, message):
+        case let .http(status, code, message, requestId, _):
+            if let requestId, !requestId.isEmpty { return "HTTP \(status) [\(code)] (reqId=\(requestId)): \(message)" }
             return "HTTP \(status) [\(code)]: \(message)"
         case .decoding(let e):
             return "Decoding error: \(e.localizedDescription)"

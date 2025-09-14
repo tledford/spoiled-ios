@@ -19,9 +19,9 @@ final class ToastCenter: ObservableObject {
         }
     }
 
-    func success(_ message: String, duration: TimeInterval = 2.0) { show(Toast(message: message, style: .success, duration: duration)) }
-    func error(_ message: String, duration: TimeInterval = 3.0) { show(Toast(message: message, style: .error, duration: duration)) }
-    func info(_ message: String, duration: TimeInterval = 2.0) { show(Toast(message: message, style: .info, duration: duration)) }
+    func success(_ message: String, duration: TimeInterval = 5.0) { show(Toast(message: message, style: .success, duration: duration)) }
+    func error(_ message: String, duration: TimeInterval = 5.0) { show(Toast(message: message, style: .error, duration: duration)) }
+    func info(_ message: String, duration: TimeInterval = 5.0) { show(Toast(message: message, style: .info, duration: duration)) }
 }
 
 struct ToastView: View {

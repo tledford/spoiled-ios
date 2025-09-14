@@ -3,6 +3,7 @@ import SwiftUI
 struct AddWishlistItemView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     
     @State private var name = ""
     @State private var description = ""
@@ -17,14 +18,28 @@ struct AddWishlistItemView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Item Name", text: $name)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                    TextField("Price", value: $price, format: .currency(code: "USD"))
-                        .keyboardType(.decimalPad)
-                    TextField("Link", text: $linkString)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Item Name").font(.caption).foregroundStyle(.secondary)
+                        TextField("", text: $name)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Description").font(.caption).foregroundStyle(.secondary)
+                        TextField("", text: $description, axis: .vertical)
+                            .lineLimit(3...6)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Price").font(.caption).foregroundStyle(.secondary)
+                        TextField("", value: $price, format: .currency(code: "USD"))
+                            .keyboardType(.decimalPad)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Link").font(.caption).foregroundStyle(.secondary)
+                        TextField("", text: $linkString)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .textContentType(.URL)
+                            .autocorrectionDisabled(true)
+                    }
                 }
                 
                 if isForKid, let currentUserKids = viewModel.kids {
@@ -83,16 +98,14 @@ struct AddWishlistItemView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        addItem()
-                    }
-                    .disabled(name.isEmpty || (isForKid && selectedKid == nil))
+                    Button("Add") { Task { await addItem() } }
+                    .disabled(name.isEmpty || (isForKid && selectedKid == nil) || viewModel.isSavingWishlistItem)
                 }
             }
         }
     }
     
-    private func addItem() {
+    private func addItem() async {
         let item = WishlistItem(
             name: name,
             description: description,
@@ -100,9 +113,12 @@ struct AddWishlistItemView: View {
             link: URL(string: linkString),
             assignedGroupIds: Array(selectedGroupIds)
         )
-        
-        viewModel.addWishlistItem(item, kidId: selectedKid?.id)
-        
-        dismiss()
+        let ok = await viewModel.addWishlistItem(item, kidId: selectedKid?.id)
+        if ok {
+            toastCenter.success("Item added")
+            dismiss()
+        } else {
+            toastCenter.error(viewModel.errorMessage ?? "Failed to add item")
+        }
     }
 } 

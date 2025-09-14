@@ -3,6 +3,7 @@ import SwiftUI
 struct EditGiftIdeaView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var personName: String
     @State private var giftName: String
     @State private var urlString: String
@@ -24,14 +25,12 @@ struct EditGiftIdeaView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Person's Name", text: $personName, prompt: Text("Person's Name"))
-                    TextField("Gift Name", text: $giftName, prompt: Text("Gift Name"))
-                    TextField("URL", text: $urlString, prompt: Text("URL"))
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                    TextField("Notes", text: $notes, prompt: Text("Notes"), axis: .vertical)
-                        .lineLimit(3...6)
-                    Toggle("Purchased", isOn: $isPurchased)
+                    GiftIdeaFormFields(personName: $personName,
+                                       giftName: $giftName,
+                                       urlString: $urlString,
+                                       notes: $notes,
+                                       isPurchased: $isPurchased,
+                                       showPurchasedToggle: true)
                 }
             }
             .navigationTitle("Edit Gift Idea")
@@ -44,15 +43,15 @@ struct EditGiftIdeaView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        saveGiftIdea()
+                        Task { await saveGiftIdea() }
                     }
-                    .disabled(personName.isEmpty || giftName.isEmpty)
+                    .disabled(personName.isEmpty || giftName.isEmpty || viewModel.isSavingGiftIdea)
                 }
             }
         }
     }
     
-    private func saveGiftIdea() {
+    private func saveGiftIdea() async {
         let updatedGiftIdea = GiftIdea(
             id: giftIdea.id,
             personName: personName,
@@ -61,7 +60,12 @@ struct EditGiftIdeaView: View {
             notes: notes,
             isPurchased: isPurchased
         )
-        viewModel.updateGiftIdea(updatedGiftIdea)
-        dismiss()
+        let ok = await viewModel.updateGiftIdea(updatedGiftIdea)
+        if ok {
+            toastCenter.success("Gift idea updated")
+            dismiss()
+        } else {
+            toastCenter.error(viewModel.errorMessage ?? "Failed to update gift idea")
+        }
     }
 } 

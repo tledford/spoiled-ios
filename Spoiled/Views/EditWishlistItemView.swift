@@ -3,6 +3,7 @@ import SwiftUI
 struct EditWishlistItemView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var name: String
     @State private var description: String
     @State private var price: Double?
@@ -26,17 +27,46 @@ struct EditWishlistItemView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Item Name", text: $name)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                    TextField("Price", value: $price, format: .currency(code: "USD"), prompt: Text("Price"))
-                        .keyboardType(.decimalPad)
-                    TextField("Link", text: $linkString)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Item Name").font(.caption).foregroundStyle(.secondary)
+                        TextField("", text: $name)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Description").font(.caption).foregroundStyle(.secondary)
+                        TextField("", text: $description, axis: .vertical)
+                            .lineLimit(3...6)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Price").font(.caption).foregroundStyle(.secondary)
+                        TextField("", value: $price, format: .currency(code: "USD"))
+                            .keyboardType(.decimalPad)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Link").font(.caption).foregroundStyle(.secondary)
+                        TextField("", text: $linkString)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .textContentType(.URL)
+                            .autocorrectionDisabled(true)
+                    }
                 }
                 
                 Section("Share with Groups") {
+                    HStack {
+                        Toggle("All Groups", isOn: Binding(
+                            get: { selectedGroupIds.count == (viewModel.groups ?? []).count },
+                            set: { isSelected in
+                                if isSelected {
+                                    selectedGroupIds = Set((viewModel.groups ?? []).map { $0.id })
+                                } else {
+                                    selectedGroupIds.removeAll()
+                                }
+                            }
+                        ))
+                    }
+                    .listRowBackground(Color.secondary.opacity(0.2))
+                    .font(.headline)
+                    
                     ForEach(viewModel.groups ?? []) { group in
                         Toggle(group.name, isOn: Binding(
                             get: { selectedGroupIds.contains(group.id) },
@@ -60,18 +90,15 @@ struct EditWishlistItemView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveChanges()
-                    }
-                    .disabled(name.isEmpty)
+                    Button("Save") { Task { await saveChanges() } }
+                    .disabled(name.isEmpty || viewModel.isSavingWishlistItem)
                 }
             }
         }
     }
     
-    private func saveChanges() {
-        // Update the item in the view model
-        viewModel.updateWishlistItem(
+    private func saveChanges() async {
+        let ok = await viewModel.updateWishlistItem(
             item: item,
             name: name,
             description: description,
@@ -80,6 +107,7 @@ struct EditWishlistItemView: View {
             assignedGroupIds: Array(selectedGroupIds),
             kidId: kidId
         )
-        dismiss()
+        if ok { toastCenter.success("Item updated"); dismiss() }
+        else { toastCenter.error(viewModel.errorMessage ?? "Failed to update item") }
     }
 } 
