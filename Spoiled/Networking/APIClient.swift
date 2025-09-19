@@ -1,4 +1,6 @@
 import Foundation
+import FirebaseAuth
+import Combine
 
 protocol APIRequest: Sendable {
     associatedtype Response: Decodable
@@ -16,13 +18,19 @@ extension APIRequest {
     var body: Data? { nil }
 }
 
+extension Notification.Name {
+    static let authUnauthorized = Notification.Name("AuthUnauthorizedNotification")
+}
+
 struct APIClient {
     let config: APIConfig
     let urlSession: URLSession
+    var tokenProvider: ((Bool) async -> String?)?
 
-    init(config: APIConfig = AppConfig.api, urlSession: URLSession = .shared) {
+    init(config: APIConfig = AppConfig.api, urlSession: URLSession = .shared, tokenProvider: ((Bool) async -> String?)? = nil) {
         self.config = config
         self.urlSession = urlSession
+        self.tokenProvider = tokenProvider
     }
 
     func execute<R: APIRequest>(_ request: R) async throws -> R.Response {
@@ -40,24 +48,49 @@ struct APIClient {
         if request.body != nil {
             urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
-        // Dev header for current user
-        urlRequest.setValue(AppConfig.devUserId.uuidString, forHTTPHeaderField: "X-User-Id")
+        // Firebase Bearer token via provider
+        if let token = await tokenProvider?(false) {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let user = Auth.auth().currentUser, let token = try? await user.getIDToken() {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let user = Auth.auth().currentUser, let token = try? await user.getIDTokenResult(forcingRefresh: true).token {
+            // As a last resort, force-refresh once to prime the token on first load
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         // Merge custom headers last
         for (k, v) in request.headers { urlRequest.setValue(v, forHTTPHeaderField: k) }
 
-        let (data, response) = try await urlSession.data(for: urlRequest)
+        var (data, response) = try await urlSession.data(for: urlRequest)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
 
-        if !(200..<300).contains(http.statusCode) {
+        // On 401, try one forced refresh of the ID token and retry once
+        if http.statusCode == 401 {
+            if let fresh = await tokenProvider?(true) {
+                var retryReq = urlRequest
+                retryReq.setValue("Bearer \(fresh)", forHTTPHeaderField: "Authorization")
+                (data, response) = try await urlSession.data(for: retryReq)
+            } else if let user = Auth.auth().currentUser, let fresh = try? await user.getIDTokenResult(forcingRefresh: true).token {
+                var retryReq = urlRequest
+                retryReq.setValue("Bearer \(fresh)", forHTTPHeaderField: "Authorization")
+                (data, response) = try await urlSession.data(for: retryReq)
+            }
+        }
+
+        guard let http2 = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+
+        if !(200..<300).contains(http2.statusCode) {
+            if http2.statusCode == 401 {
+                NotificationCenter.default.post(name: .authUnauthorized, object: nil)
+            }
             let requestId = http.allHeaderFields["X-Request-Id"] as? String
             // Try to decode error payload and optional reqId passthrough
             if let apiErrorWithReq = try? JSONDecoder().decode(APIErrorResponseWithReqId.self, from: data) {
-                throw APIError.http(status: http.statusCode, code: apiErrorWithReq.error.code, message: apiErrorWithReq.error.message, requestId: apiErrorWithReq.reqId ?? requestId, rawBody: nil)
+                throw APIError.http(status: http2.statusCode, code: apiErrorWithReq.error.code, message: apiErrorWithReq.error.message, requestId: apiErrorWithReq.reqId ?? requestId, rawBody: nil)
             } else if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
-                throw APIError.http(status: http.statusCode, code: apiError.error.code, message: apiError.error.message, requestId: requestId, rawBody: nil)
+                throw APIError.http(status: http2.statusCode, code: apiError.error.code, message: apiError.error.message, requestId: requestId, rawBody: nil)
             }
             let fallback = String(data: data, encoding: .utf8)
-            throw APIError.http(status: http.statusCode, code: "HTTP_\(http.statusCode)", message: fallback ?? "Unknown error", requestId: requestId, rawBody: fallback)
+            throw APIError.http(status: http2.statusCode, code: "HTTP_\(http2.statusCode)", message: fallback ?? "Unknown error", requestId: requestId, rawBody: fallback)
         }
 
         let decoder = JSONDecoder()

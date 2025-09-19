@@ -4,7 +4,7 @@ struct CreateGroupResponse: Decodable { let id: UUID }
 
 private struct CreateGroupPayload: Encodable { let id: UUID?; let name: String }
 private struct RenameGroupPayload: Encodable { let name: String }
-private struct AddMemberPayload: Encodable { let userId: UUID?; let email: String?; let role: String? }
+private struct AddMemberPayload: Encodable { let userId: String?; let email: String?; let role: String? }
 
 private struct CreateGroupRequest: APIRequest {
     typealias Response = CreateGroupResponse
@@ -37,7 +37,7 @@ private struct AddMemberRequest: APIRequest {
     let method: String = "POST"
     let body: Data?
 
-    init(groupId: UUID, userId: UUID? = nil, email: String? = nil, role: String? = nil) {
+    init(groupId: UUID, userId: String? = nil, email: String? = nil, role: String? = nil) {
         self.path = "/groups/\(groupId.uuidString)/members"
         let payload = AddMemberPayload(userId: userId, email: email, role: role)
         self.body = try? JSONEncoder().encode(payload)
@@ -49,8 +49,8 @@ private struct RemoveMemberRequest: APIRequest {
     let path: String
     let method: String = "DELETE"
 
-    init(groupId: UUID, userId: UUID) {
-        self.path = "/groups/\(groupId.uuidString)/members/\(userId.uuidString)"
+    init(groupId: UUID, userId: String) {
+        self.path = "/groups/\(groupId.uuidString)/members/\(userId)"
     }
 }
 
@@ -71,11 +71,11 @@ struct GroupsService {
         _ = try await client.execute(AddMemberRequest(groupId: groupId, email: email, role: role))
     }
 
-    func addMember(groupId: UUID, userId: UUID, role: String? = nil) async throws {
+    func addMember(groupId: UUID, userId: String, role: String? = nil) async throws {
         _ = try await client.execute(AddMemberRequest(groupId: groupId, userId: userId, role: role))
     }
 
-    func removeMember(groupId: UUID, userId: UUID) async throws {
+    func removeMember(groupId: UUID, userId: String) async throws {
         _ = try await client.execute(RemoveMemberRequest(groupId: groupId, userId: userId))
     }
 

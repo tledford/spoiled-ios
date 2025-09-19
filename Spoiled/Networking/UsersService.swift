@@ -16,8 +16,8 @@ private struct UpdateUserRequest: APIRequest {
     let headers: [String: String] = [:]
     let body: Data?
 
-    init(userId: UUID, name: String?, email: String?, birthdate: Date?, sizesJSON: String?) {
-        self.path = "/users/\(userId.uuidString)"
+    init(userId: String, name: String?, email: String?, birthdate: Date?, sizesJSON: String?) {
+        self.path = "/users/\(userId)"
         let payload = UpdateUserPayload(name: name, email: email, birthdate: birthdate, sizes: sizesJSON)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -29,7 +29,7 @@ struct UsersService {
     let client: APIClient
     init(client: APIClient = APIClient()) { self.client = client }
 
-    func updateUser(userId: UUID, name: String, email: String, birthdate: Date, sizes: Sizes) async throws {
+    func updateUser(userId: String, name: String, email: String, birthdate: Date, sizes: Sizes) async throws {
         // sizes must be a JSON string per API schema
         let sizesData = try JSONEncoder().encode(sizes)
         let sizesJSON = String(data: sizesData, encoding: .utf8)

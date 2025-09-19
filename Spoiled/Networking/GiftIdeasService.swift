@@ -25,8 +25,8 @@ private struct CreateGiftIdeaRequest: APIRequest {
     let method: String = "POST"
     let body: Data?
 
-    init(userId: UUID, idea: GiftIdea) {
-        self.path = "/users/\(userId.uuidString)/gift-ideas"
+    init(userId: String, idea: GiftIdea) {
+        self.path = "/users/\(userId)/gift-ideas"
         let payload = CreateGiftIdeaPayload(
             id: idea.id, // allow server to use our id or generate
             personName: idea.personName,
@@ -47,8 +47,8 @@ private struct UpdateGiftIdeaRequest: APIRequest {
     let method: String = "PATCH"
     let body: Data?
 
-    init(userId: UUID, idea: GiftIdea) {
-        self.path = "/users/\(userId.uuidString)/gift-ideas/\(idea.id.uuidString)"
+    init(userId: String, idea: GiftIdea) {
+        self.path = "/users/\(userId)/gift-ideas/\(idea.id.uuidString)"
         let payload = UpdateGiftIdeaPayload(
             personName: idea.personName,
             giftName: idea.giftName,
@@ -67,8 +67,8 @@ private struct DeleteGiftIdeaRequest: APIRequest {
     let path: String
     let method: String = "DELETE"
 
-    init(userId: UUID, ideaId: UUID) {
-        self.path = "/users/\(userId.uuidString)/gift-ideas/\(ideaId.uuidString)"
+    init(userId: String, ideaId: UUID) {
+        self.path = "/users/\(userId)/gift-ideas/\(ideaId.uuidString)"
     }
 }
 
@@ -76,16 +76,16 @@ struct GiftIdeasService {
     let client: APIClient
     init(client: APIClient = APIClient()) { self.client = client }
 
-    func create(userId: UUID, idea: GiftIdea) async throws -> UUID {
+    func create(userId: String, idea: GiftIdea) async throws -> UUID {
         let res = try await client.execute(CreateGiftIdeaRequest(userId: userId, idea: idea))
         return res.id
     }
 
-    func update(userId: UUID, idea: GiftIdea) async throws {
+    func update(userId: String, idea: GiftIdea) async throws {
         _ = try await client.execute(UpdateGiftIdeaRequest(userId: userId, idea: idea))
     }
 
-    func delete(userId: UUID, ideaId: UUID) async throws {
+    func delete(userId: String, ideaId: UUID) async throws {
         _ = try await client.execute(DeleteGiftIdeaRequest(userId: userId, ideaId: ideaId))
     }
 }

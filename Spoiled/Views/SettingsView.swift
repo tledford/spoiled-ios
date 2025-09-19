@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var auth: AuthViewModel
     @State private var showingEditProfile = false
     @State private var showDebug = false
     
@@ -34,17 +35,11 @@ struct SettingsView: View {
                 
                 Section("Account") {
                     Button(role: .destructive) {
-                        // Handle sign out
+                        auth.signOut()
                     } label: {
                         Text("Sign Out")
                     }
                 }
-
-                #if DEBUG
-                Section("Developer") {
-                    NavigationLink("Debug Tools") { DebugToolsView() }
-                }
-                #endif
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)

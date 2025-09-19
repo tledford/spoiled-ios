@@ -11,6 +11,7 @@ struct ContentView: View {
     @EnvironmentObject private var wishlistViewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
     @State private var selectedTab = 0
+    @State private var showEditProfile = false
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -43,6 +44,14 @@ struct ContentView: View {
             // }
         }
         .toast(toastCenter)
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileView(viewModel: wishlistViewModel)
+                .environmentObject(toastCenter)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NewUserCreated"))) { _ in
+            toastCenter.info("Welcome! Let’s finish setting up your profile.")
+            showEditProfile = true
+        }
     }
 }
 

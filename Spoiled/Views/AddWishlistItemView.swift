@@ -23,16 +23,6 @@ struct AddWishlistItemView: View {
                         TextField("", text: $name)
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Description").font(.caption).foregroundStyle(.secondary)
-                        TextField("", text: $description, axis: .vertical)
-                            .lineLimit(3...6)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Price").font(.caption).foregroundStyle(.secondary)
-                        TextField("", value: $price, format: .currency(code: "USD"))
-                            .keyboardType(.decimalPad)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
                         Text("Link").font(.caption).foregroundStyle(.secondary)
                         TextField("", text: $linkString)
                             .keyboardType(.URL)
@@ -40,6 +30,16 @@ struct AddWishlistItemView: View {
                             .textContentType(.URL)
                             .autocorrectionDisabled(true)
                     }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Description").font(.caption).foregroundStyle(.secondary)
+                        TextField("", text: $description, axis: .vertical)
+                            .lineLimit(3...6)
+                    }
+//                    VStack(alignment: .leading, spacing: 6) {
+//                        Text("Price").font(.caption).foregroundStyle(.secondary)
+//                        TextField("", value: $price, format: .currency(code: "USD"))
+//                            .keyboardType(.decimalPad)
+//                    }
                 }
                 
                 if isForKid, let currentUserKids = viewModel.kids {

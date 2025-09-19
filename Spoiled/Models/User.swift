@@ -1,13 +1,13 @@
 import Foundation
 
 struct User: Identifiable, Codable, Hashable {
-    let id: UUID
+    let id: String
     var name: String
     var email: String
     var birthdate: Date
     var sizes: Sizes
     
-    init(id: UUID = UUID(), 
+    init(id: String = "", 
          name: String, 
          email: String,
          birthdate: Date = Date(),

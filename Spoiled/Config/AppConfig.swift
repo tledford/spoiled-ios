@@ -26,8 +26,4 @@ struct APIConfig: Sendable {
 enum AppConfig {
     // Update these to swap environments quickly
     static var api: APIConfig = APIConfig(host: "192.168.1.179")
-
-    // Dev-only header user id for the API's currentUserMiddleware
-    // Change for testing different users
-    static var devUserId: UUID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 }

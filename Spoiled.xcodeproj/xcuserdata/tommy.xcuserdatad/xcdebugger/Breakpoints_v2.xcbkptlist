@@ -16,7 +16,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "55"
             endingLineNumber = "55"
-            landmarkName = "load()"
+            landmarkName = "configureAuth(using:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -112,7 +112,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "241"
             endingLineNumber = "241"
-            landmarkName = "updateWishlistItem(item:name:description:price:link:assignedGroupIds:kidId:)"
+            landmarkName = "addWishlistItem(_:kidId:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -128,7 +128,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "240"
             endingLineNumber = "240"
-            landmarkName = "updateWishlistItem(item:name:description:price:link:assignedGroupIds:kidId:)"
+            landmarkName = "addWishlistItem(_:kidId:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

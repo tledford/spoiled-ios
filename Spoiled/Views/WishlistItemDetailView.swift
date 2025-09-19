@@ -7,10 +7,11 @@ struct WishlistItemDetailView: View {
     var isInGroupView: Bool
     let kidId: UUID?
     let groupId: UUID?
-    let groupMemberId: UUID?
+    let groupMemberId: String?
     @EnvironmentObject private var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     
@@ -46,9 +47,9 @@ struct WishlistItemDetailView: View {
                     }
                     
                     // Price Card
-                    if let price = currentItem.price {
-                        PriceCard(price: price)
-                    }
+//                    if let price = currentItem.price {
+//                        PriceCard(price: price)
+//                    }
                     
                     // Description Card
                     if !currentItem.description.isEmpty {
@@ -62,7 +63,7 @@ struct WishlistItemDetailView: View {
                         .padding()
                         .background(Color(.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                        .shadow(color: primaryShadowColor(colorScheme), radius: 5, x: 0, y: 2)
                     }
                     
                     // Groups Card
@@ -84,7 +85,7 @@ struct WishlistItemDetailView: View {
                         .padding()
                         .background(Color(.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                        .shadow(color: primaryShadowColor(colorScheme), radius: 5, x: 0, y: 2)
                     } else if !isInGroupView && assignedGroups.isEmpty {
                         HStack(spacing: 8) {
                             Image(systemName: "lock.fill")
@@ -96,7 +97,7 @@ struct WishlistItemDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color(.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
+                        .shadow(color: subtleShadowColor(colorScheme), radius: 4, x: 0, y: 1)
                     }
                     
                     // Purchase Button
@@ -182,26 +183,27 @@ struct WishlistItemDetailView: View {
     }
 }
 
-struct PriceCard: View {
-    let price: Double
+// struct PriceCard: View {
+//     let price: Double
+//     @Environment(\.colorScheme) private var colorScheme
     
-    var body: some View {
-        HStack {
-            Text("Price")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(String(format: "$%.2f", price))
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.accentColor)
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-    }
-} 
+//     var body: some View {
+//         HStack {
+//             Text("Price")
+//                 .font(.headline)
+//                 .foregroundStyle(.secondary)
+//             Spacer()
+//             Text(String(format: "$%.2f", price))
+//                 .font(.title2)
+//                 .fontWeight(.bold)
+//                 .foregroundColor(.accentColor)
+//         }
+//         .padding()
+//         .background(Color(.systemBackground))
+//         .clipShape(RoundedRectangle(cornerRadius: 12))
+//         .shadow(color: primaryShadowColor(colorScheme), radius: 5, x: 0, y: 2)
+//     }
+// } 
 
 // MARK: - Link Preview Support (LPLinkView in SwiftUI)
 
@@ -211,6 +213,7 @@ private struct LinkPreviewView: View {
 
     @StateObject private var loader = LinkMetadataLoader()
     @State private var showShareSheet = false
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         SwiftUI.Group {
@@ -218,9 +221,9 @@ private struct LinkPreviewView: View {
                 Link(destination: url) {
                     LPLinkViewRepresentable(metadata: metadata)
                         .frame(maxWidth: .infinity)
-                        .frame(minHeight: 100)
+                        .frame(minHeight: 80)
                         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-                        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                        .shadow(color: primaryShadowColor(scheme), radius: 5, x: 0, y: 2)
                 }
             } else if loader.failed {
                 Link(destination: url) {
@@ -234,19 +237,19 @@ private struct LinkPreviewView: View {
                     .foregroundColor(.white)
                     .background(Color.accentColor)
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    .shadow(color: primaryShadowColor(scheme), radius: 5, x: 0, y: 2)
                 }
             } else {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(Color(.secondarySystemBackground))
-                    .frame(height: 110)
+                    .frame(height: 80)
                     .overlay(
                         HStack(spacing: 8) {
                             ProgressView()
                             Text("Loading preview…").foregroundStyle(.secondary)
                         }
                     )
-                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    .shadow(color: primaryShadowColor(scheme), radius: 5, x: 0, y: 2)
                     .task {
                         loader.fetch(url: url)
                     }
@@ -335,6 +338,24 @@ private struct ActivityView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
         // no-op
+    }
+}
+
+// MARK: - Adaptive shadows
+
+private func primaryShadowColor(_ scheme: ColorScheme) -> Color {
+    switch scheme {
+    case .light: return Color.black.opacity(0.1)
+    case .dark: return Color.white.opacity(0.08)
+    @unknown default: return Color.black.opacity(0.1)
+    }
+}
+
+private func subtleShadowColor(_ scheme: ColorScheme) -> Color {
+    switch scheme {
+    case .light: return Color.black.opacity(0.06)
+    case .dark: return Color.white.opacity(0.05)
+    @unknown default: return Color.black.opacity(0.06)
     }
 }
 

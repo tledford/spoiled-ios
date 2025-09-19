@@ -40,13 +40,55 @@ class WishlistViewModel: ObservableObject {
         self.wishlistService = wishlistService
         self.groupsService = groupsService
         self.kidsService = kidsService
-        Task { await load() }
     }
 
+    // Convenience to rebuild services with an auth-backed APIClient token provider
+    func configureAuth(using auth: AuthViewModel) {
+        let provider: (Bool) async -> String? = { force in await auth.getValidIDToken(forceRefresh: force) }
+        let client = APIClient(tokenProvider: provider)
+        let bs = BootstrapService(client: client)
+        let us = UsersService(client: client)
+        let gis = GiftIdeasService(client: client)
+        let ws = WishlistService(client: client)
+        let gs = GroupsService(client: client)
+        let ks = KidsService(client: client)
+        // Assign
+        // Note: properties are let; create a new VM when wiring auth or refactor to var. We'll instead refresh via new local services usage in methods.
+        // For minimal impact, we keep stored services but prefer local overrides via a small indirection helper.
+        _authClientOverride = client
+        _bootstrapServiceOverride = bs
+        _usersServiceOverride = us
+        _giftIdeasServiceOverride = gis
+        _wishlistServiceOverride = ws
+        _groupsServiceOverride = gs
+        _kidsServiceOverride = ks
+
+        // Now that auth is configured, kick off a fresh load
+        Task { await self.load() }
+    }
+
+    // MARK: - Service overrides when auth is configured
+    private var _authClientOverride: APIClient?
+    private var _bootstrapServiceOverride: BootstrapService?
+    private var _usersServiceOverride: UsersService?
+    private var _giftIdeasServiceOverride: GiftIdeasService?
+    private var _wishlistServiceOverride: WishlistService?
+    private var _groupsServiceOverride: GroupsService?
+    private var _kidsServiceOverride: KidsService?
+
+    private var effectiveBootstrap: BootstrapService { _bootstrapServiceOverride ?? bootstrapService }
+    private var effectiveUsers: UsersService { _usersServiceOverride ?? usersService }
+    private var effectiveGiftIdeas: GiftIdeasService { _giftIdeasServiceOverride ?? giftIdeasService }
+    private var effectiveWishlist: WishlistService { _wishlistServiceOverride ?? wishlistService }
+    private var effectiveGroups: GroupsService { _groupsServiceOverride ?? groupsService }
+    private var effectiveKids: KidsService { _kidsServiceOverride ?? kidsService }
+
     func load() async {
-        #if DEBUG
-        dlog("Starting bootstrap request: baseURL=\(AppConfig.api.baseURL.absoluteString) path=/bootstrap userId=\(AppConfig.devUserId.uuidString)")
-        #endif
+        // Avoid making network calls before auth/token is configured
+        guard _authClientOverride != nil else { return }
+//        #if DEBUG
+//        dlog("Starting bootstrap request: baseURL=\(AppConfig.api.baseURL.absoluteString) path=/bootstrap userId=\(AppConfig.devUserId.uuidString)")
+//        #endif
         isLoading = true
         errorMessage = nil
         do {
@@ -58,16 +100,20 @@ class WishlistViewModel: ObservableObject {
 //            self.wishlistItems = mockData.wishlistItems
 //            self.giftIdeas = mockData.giftIdeas
 //            #else
-            let data = try await bootstrapService.load()
+            let data = try await effectiveBootstrap.load()
 //            #endif
             #if DEBUG
-            dlog("Bootstrap success: user=\(data.0.id.uuidString) groups=\(data.1.count) kids=\(data.2.count) myItems=\(data.3.count) giftIdeas=\(data.4.count)")
+            dlog("Bootstrap success: user=\(data.0.id) groups=\(data.1.count) kids=\(data.2.count) myItems=\(data.3.count) giftIdeas=\(data.4.count)")
             #endif
             self.currentUser = data.0
             self.groups = data.1
             self.kids = data.2
             self.wishlistItems = data.3
             self.giftIdeas = data.4
+            if data.5 {
+                // newly created account; surface a flag so UI can navigate to EditProfileView
+                NotificationCenter.default.post(name: Notification.Name("NewUserCreated"), object: nil)
+            }
         } catch {
             #if DEBUG
             elog("Bootstrap failed: \(String(describing: error))")
@@ -80,13 +126,13 @@ class WishlistViewModel: ObservableObject {
         #endif
     }
 
-    func toggleItemPurchased(_ item: WishlistItem, groupId: UUID?, groupMemberId: UUID?, kidId: UUID? = nil) {
+    func toggleItemPurchased(_ item: WishlistItem, groupId: UUID?, groupMemberId: String?, kidId: UUID? = nil) {
         guard let groupId, let currentUserId = currentUser?.id else { return }
 
         // Determine context: member's own item vs kid item
-        if let memberUserId = groupMemberId,
+    if let memberUserId = groupMemberId,
            let groupIndex = groups?.firstIndex(where: { $0.id == groupId }),
-           let memberIndex = groups?[groupIndex].members.firstIndex(where: { $0.id == memberUserId }),
+       let memberIndex = groups?[groupIndex].members.firstIndex(where: { $0.id == memberUserId }),
            let itemIndex = groups?[groupIndex].members[memberIndex].wishlistItems.firstIndex(where: { $0.id == item.id }) {
 
             var target = groups![groupIndex].members[memberIndex].wishlistItems[itemIndex]
@@ -105,7 +151,7 @@ class WishlistViewModel: ObservableObject {
             Task { [weak self] in
                 guard let self else { return }
                 do {
-                    _ = try await wishlistService.toggleGroupMemberItem(groupId: groupId, memberUserId: memberUserId, itemId: item.id)
+                    _ = try await effectiveWishlist.toggleGroupMemberItem(groupId: groupId, memberUserId: memberUserId, itemId: item.id)
                     await self.refreshAll()
                 } catch {
                     // Roll back
@@ -144,7 +190,7 @@ class WishlistViewModel: ObservableObject {
                 Task { [weak self] in
                     guard let self else { return }
                     do {
-                        _ = try await wishlistService.toggleGroupKidItem(groupId: groupId, kidId: kidId, itemId: item.id)
+                        _ = try await effectiveWishlist.toggleGroupKidItem(groupId: groupId, kidId: kidId, itemId: item.id)
                         await self.refreshAll()
                     } catch {
                         // Roll back
@@ -173,7 +219,7 @@ class WishlistViewModel: ObservableObject {
             defer { isSavingWishlistItem = false }
             var newItem = item
             if let kidId = kidId {
-                let serverId = try await wishlistService.createKidItem(userId: userId, kidId: kidId, item: item)
+                let serverId = try await effectiveWishlist.createKidItem(userId: userId, kidId: kidId, item: item)
                 if serverId != item.id {
                     newItem = WishlistItem(id: serverId, name: item.name, description: item.description, price: item.price, link: item.link, isPurchased: item.isPurchased, assignedGroupIds: item.assignedGroupIds)
                 }
@@ -181,7 +227,7 @@ class WishlistViewModel: ObservableObject {
                     kids?[kidIndex].wishlistItems.append(newItem)
                 }
             } else {
-                let serverId = try await wishlistService.createUserItem(userId: userId, item: item)
+                let serverId = try await effectiveWishlist.createUserItem(userId: userId, item: item)
                 if serverId != item.id {
                     newItem = WishlistItem(id: serverId, name: item.name, description: item.description, price: item.price, link: item.link, isPurchased: item.isPurchased, assignedGroupIds: item.assignedGroupIds)
                 }
@@ -207,7 +253,7 @@ class WishlistViewModel: ObservableObject {
             isSavingGroup = true
             defer { isSavingGroup = false }
             do {
-                let newId = try await groupsService.create(name: group.name)
+                let newId = try await effectiveGroups.create(name: group.name)
                 var created = group
                 if newId != group.id {
                     created = Group(id: newId, name: group.name, isAdmin: true, members: [])
@@ -232,13 +278,13 @@ class WishlistViewModel: ObservableObject {
             isSavingWishlistItem = true
             defer { isSavingWishlistItem = false }
             if let kidId = kidId {
-                try await wishlistService.updateKidItem(userId: userId, kidId: kidId, item: updated)
+                try await effectiveWishlist.updateKidItem(userId: userId, kidId: kidId, item: updated)
                 if let kidIndex = kids?.firstIndex(where: { $0.id == kidId }),
                    let index = kids?[kidIndex].wishlistItems.firstIndex(where: { $0.id == item.id }) {
                     kids?[kidIndex].wishlistItems[index] = updated
                 }
             } else {
-                try await wishlistService.updateUserItem(userId: userId, item: updated)
+                try await effectiveWishlist.updateUserItem(userId: userId, item: updated)
                 if let index = wishlistItems?.firstIndex(where: { $0.id == item.id }) {
                     wishlistItems?[index] = updated
                 }
@@ -264,7 +310,7 @@ class WishlistViewModel: ObservableObject {
             defer { isSavingGiftIdea = false }
             // Ensure local array exists
             if giftIdeas == nil { giftIdeas = [] }
-            let serverId = try await giftIdeasService.create(userId: userId, idea: giftIdea)
+            let serverId = try await effectiveGiftIdeas.create(userId: userId, idea: giftIdea)
             var ideaToInsert = giftIdea
             if serverId != giftIdea.id {
                 // Rebuild with server id to keep in sync
@@ -295,7 +341,7 @@ class WishlistViewModel: ObservableObject {
         do {
             isSavingGiftIdea = true
             defer { isSavingGiftIdea = false }
-            try await giftIdeasService.update(userId: userId, idea: giftIdea)
+            try await effectiveGiftIdeas.update(userId: userId, idea: giftIdea)
             if let index = giftIdeas?.firstIndex(where: { $0.id == giftIdea.id }) {
                 giftIdeas?[index] = giftIdea
             }
@@ -311,7 +357,7 @@ class WishlistViewModel: ObservableObject {
         do {
             deletingGiftIdeaIds.insert(giftIdea.id)
             defer { deletingGiftIdeaIds.remove(giftIdea.id) }
-            try await giftIdeasService.delete(userId: userId, ideaId: giftIdea.id)
+            try await effectiveGiftIdeas.delete(userId: userId, ideaId: giftIdea.id)
             giftIdeas?.removeAll(where: { $0.id == giftIdea.id })
         return true
         } catch {
@@ -326,12 +372,12 @@ class WishlistViewModel: ObservableObject {
             deletingWishlistItemIds.insert(item.id)
             defer { deletingWishlistItemIds.remove(item.id) }
             if let kidId = kidId {
-                try await wishlistService.deleteKidItem(userId: userId, kidId: kidId, itemId: item.id)
+                try await effectiveWishlist.deleteKidItem(userId: userId, kidId: kidId, itemId: item.id)
                 if let kidIndex = kids?.firstIndex(where: { $0.id == kidId }) {
                     kids?[kidIndex].wishlistItems.removeAll(where: { $0.id == item.id })
                 }
             } else {
-                try await wishlistService.deleteUserItem(userId: userId, itemId: item.id)
+                try await effectiveWishlist.deleteUserItem(userId: userId, itemId: item.id)
                 wishlistItems?.removeAll(where: { $0.id == item.id })
             }
             return true
@@ -343,7 +389,7 @@ class WishlistViewModel: ObservableObject {
 
     func saveProfile(name: String, email: String, birthdate: Date, sizes: Sizes) async throws {
         guard let userId = currentUser?.id else { return }
-        try await usersService.updateUser(userId: userId, name: name, email: email, birthdate: birthdate, sizes: sizes)
+    try await effectiveUsers.updateUser(userId: userId, name: name, email: email, birthdate: birthdate, sizes: sizes)
         // Update local state after successful save
         var updated = currentUser
         updated?.name = name
@@ -357,7 +403,7 @@ class WishlistViewModel: ObservableObject {
         isSavingGroup = true
         defer { isSavingGroup = false }
         do {
-            try await groupsService.rename(groupId: group.id, name: newName)
+            try await effectiveGroups.rename(groupId: group.id, name: newName)
             if let index = groups?.firstIndex(where: { $0.id == group.id }) {
                 groups?[index].name = newName
             }
@@ -370,7 +416,7 @@ class WishlistViewModel: ObservableObject {
     
     func removeMemberFromGroup(_ member: GroupMember, from group: Group) async -> Bool {
         do {
-            try await groupsService.removeMember(groupId: group.id, userId: member.id)
+            try await effectiveGroups.removeMember(groupId: group.id, userId: member.id)
             if let groupIndex = groups?.firstIndex(where: { $0.id == group.id }) {
                 groups?[groupIndex].members.removeAll(where: { $0.id == member.id })
             }
@@ -383,7 +429,7 @@ class WishlistViewModel: ObservableObject {
     
     func addMemberToGroup(email: String, to group: Group) async -> Bool {
         do {
-            try await groupsService.addMember(groupId: group.id, email: email)
+            try await effectiveGroups.addMember(groupId: group.id, email: email)
             // Optimistic UI: append a placeholder member until next refresh (name = email)
             if let groupIndex = groups?.firstIndex(where: { $0.id == group.id }) {
                 groups?[groupIndex].members.append(GroupMember(name: email, wishlistItems: []))
@@ -399,7 +445,7 @@ class WishlistViewModel: ObservableObject {
         do {
             deletingGroupIds.insert(group.id)
             defer { deletingGroupIds.remove(group.id) }
-            try await groupsService.delete(groupId: group.id)
+            try await effectiveGroups.delete(groupId: group.id)
             groups?.removeAll(where: { $0.id == group.id })
             return true
         } catch {
@@ -413,7 +459,7 @@ class WishlistViewModel: ObservableObject {
         do {
             isSavingKid = true
             defer { isSavingKid = false }
-            let newId = try await kidsService.create(userId: userId, kid: kid)
+            let newId = try await effectiveKids.create(userId: userId, kid: kid)
             var created = kid
             if newId != kid.id {
                 created = Kid(id: newId, name: kid.name, birthdate: kid.birthdate, wishlistItems: kid.wishlistItems, sizes: kid.sizes)
@@ -432,7 +478,7 @@ class WishlistViewModel: ObservableObject {
         do {
             isSavingKid = true
             defer { isSavingKid = false }
-            try await kidsService.update(userId: userId, kid: kid)
+            try await effectiveKids.update(userId: userId, kid: kid)
             if let index = kids?.firstIndex(where: { $0.id == kid.id }) {
                 kids?[index] = kid
             }
@@ -448,7 +494,7 @@ class WishlistViewModel: ObservableObject {
         do {
             deletingKidIds.insert(kid.id)
             defer { deletingKidIds.remove(kid.id) }
-            try await kidsService.delete(userId: userId, kidId: kid.id)
+            try await effectiveKids.delete(userId: userId, kidId: kid.id)
             kids?.removeAll(where: { $0.id == kid.id })
             return true
         } catch {

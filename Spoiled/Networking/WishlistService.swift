@@ -28,8 +28,8 @@ private struct CreateUserItemRequest: APIRequest {
     let method: String = "POST"
     let body: Data?
 
-    init(userId: UUID, item: WishlistItem) {
-        self.path = "/users/\(userId.uuidString)/wishlist"
+    init(userId: String, item: WishlistItem) {
+        self.path = "/users/\(userId)/wishlist"
         let payload = CreateWishlistItemPayload(
             id: item.id, // allow server to use our id or generate
             name: item.name,
@@ -50,8 +50,8 @@ private struct CreateKidItemRequest: APIRequest {
     let method: String = "POST"
     let body: Data?
 
-    init(userId: UUID, kidId: UUID, item: WishlistItem) {
-        self.path = "/users/\(userId.uuidString)/kids/\(kidId.uuidString)/wishlist"
+    init(userId: String, kidId: UUID, item: WishlistItem) {
+        self.path = "/users/\(userId)/kids/\(kidId.uuidString)/wishlist"
         let payload = CreateWishlistItemPayload(
             id: item.id,
             name: item.name,
@@ -72,8 +72,8 @@ private struct UpdateUserItemRequest: APIRequest {
     let method: String = "PATCH"
     let body: Data?
 
-    init(userId: UUID, item: WishlistItem) {
-        self.path = "/users/\(userId.uuidString)/wishlist/\(item.id.uuidString)"
+    init(userId: String, item: WishlistItem) {
+        self.path = "/users/\(userId)/wishlist/\(item.id.uuidString)"
         let payload = UpdateWishlistItemPayload(
             name: item.name,
             description: item.description,
@@ -94,8 +94,8 @@ private struct UpdateKidItemRequest: APIRequest {
     let method: String = "PATCH"
     let body: Data?
 
-    init(userId: UUID, kidId: UUID, item: WishlistItem) {
-        self.path = "/users/\(userId.uuidString)/kids/\(kidId.uuidString)/wishlist/\(item.id.uuidString)"
+    init(userId: String, kidId: UUID, item: WishlistItem) {
+        self.path = "/users/\(userId)/kids/\(kidId.uuidString)/wishlist/\(item.id.uuidString)"
         let payload = UpdateWishlistItemPayload(
             name: item.name,
             description: item.description,
@@ -115,8 +115,8 @@ private struct DeleteUserItemRequest: APIRequest {
     let path: String
     let method: String = "DELETE"
 
-    init(userId: UUID, itemId: UUID) {
-        self.path = "/users/\(userId.uuidString)/wishlist/\(itemId.uuidString)"
+    init(userId: String, itemId: UUID) {
+        self.path = "/users/\(userId)/wishlist/\(itemId.uuidString)"
     }
 }
 
@@ -125,23 +125,23 @@ private struct DeleteKidItemRequest: APIRequest {
     let path: String
     let method: String = "DELETE"
 
-    init(userId: UUID, kidId: UUID, itemId: UUID) {
-        self.path = "/users/\(userId.uuidString)/kids/\(kidId.uuidString)/wishlist/\(itemId.uuidString)"
+    init(userId: String, kidId: UUID, itemId: UUID) {
+        self.path = "/users/\(userId)/kids/\(kidId.uuidString)/wishlist/\(itemId.uuidString)"
     }
 }
 
 private struct ToggleGroupPurchaseRequest: APIRequest {
-    struct ToggleResponse: Decodable { let ok: Bool; let isPurchased: Bool; let purchasedAt: String?; let purchasedBy: UUID? }
+    struct ToggleResponse: Decodable { let ok: Bool; let isPurchased: Bool; let purchasedAt: String?; let purchasedBy: String? }
     typealias Response = ToggleResponse
     let path: String
     let method: String = "PATCH"
-    init(groupId: UUID, memberUserId: UUID, itemId: UUID) {
-        self.path = "/groups/\(groupId.uuidString)/members/\(memberUserId.uuidString)/wishlist/\(itemId.uuidString)/purchase"
+    init(groupId: UUID, memberUserId: String, itemId: UUID) {
+        self.path = "/groups/\(groupId.uuidString)/members/\(memberUserId)/wishlist/\(itemId.uuidString)/purchase"
     }
 }
 
 private struct ToggleGroupKidPurchaseRequest: APIRequest {
-    struct ToggleResponse: Decodable { let ok: Bool; let isPurchased: Bool; let purchasedAt: String?; let purchasedBy: UUID? }
+    struct ToggleResponse: Decodable { let ok: Bool; let isPurchased: Bool; let purchasedAt: String?; let purchasedBy: String? }
     typealias Response = ToggleResponse
     let path: String
     let method: String = "PATCH"
@@ -154,39 +154,39 @@ struct WishlistService {
     let client: APIClient
     init(client: APIClient = APIClient()) { self.client = client }
 
-    func createUserItem(userId: UUID, item: WishlistItem) async throws -> UUID {
+    func createUserItem(userId: String, item: WishlistItem) async throws -> UUID {
         let res = try await client.execute(CreateUserItemRequest(userId: userId, item: item))
         return res.id
     }
 
-    func createKidItem(userId: UUID, kidId: UUID, item: WishlistItem) async throws -> UUID {
+    func createKidItem(userId: String, kidId: UUID, item: WishlistItem) async throws -> UUID {
         let res = try await client.execute(CreateKidItemRequest(userId: userId, kidId: kidId, item: item))
         return res.id
     }
 
-    func updateUserItem(userId: UUID, item: WishlistItem) async throws {
+    func updateUserItem(userId: String, item: WishlistItem) async throws {
         _ = try await client.execute(UpdateUserItemRequest(userId: userId, item: item))
     }
 
-    func updateKidItem(userId: UUID, kidId: UUID, item: WishlistItem) async throws {
+    func updateKidItem(userId: String, kidId: UUID, item: WishlistItem) async throws {
         _ = try await client.execute(UpdateKidItemRequest(userId: userId, kidId: kidId, item: item))
     }
 
-    func deleteUserItem(userId: UUID, itemId: UUID) async throws {
+    func deleteUserItem(userId: String, itemId: UUID) async throws {
         _ = try await client.execute(DeleteUserItemRequest(userId: userId, itemId: itemId))
     }
 
-    func deleteKidItem(userId: UUID, kidId: UUID, itemId: UUID) async throws {
+    func deleteKidItem(userId: String, kidId: UUID, itemId: UUID) async throws {
         _ = try await client.execute(DeleteKidItemRequest(userId: userId, kidId: kidId, itemId: itemId))
     }
 
-    func toggleGroupMemberItem(groupId: UUID, memberUserId: UUID, itemId: UUID) async throws -> (isPurchased: Bool, purchasedAt: Date?, purchasedBy: UUID?) {
+    func toggleGroupMemberItem(groupId: UUID, memberUserId: String, itemId: UUID) async throws -> (isPurchased: Bool, purchasedAt: Date?, purchasedBy: String?) {
         let res = try await client.execute(ToggleGroupPurchaseRequest(groupId: groupId, memberUserId: memberUserId, itemId: itemId))
         let date = parseAPIDate(res.purchasedAt)
         return (res.isPurchased, date, res.purchasedBy)
     }
 
-    func toggleGroupKidItem(groupId: UUID, kidId: UUID, itemId: UUID) async throws -> (isPurchased: Bool, purchasedAt: Date?, purchasedBy: UUID?) {
+    func toggleGroupKidItem(groupId: UUID, kidId: UUID, itemId: UUID) async throws -> (isPurchased: Bool, purchasedAt: Date?, purchasedBy: String?) {
         let res = try await client.execute(ToggleGroupKidPurchaseRequest(groupId: groupId, kidId: kidId, itemId: itemId))
         let date = parseAPIDate(res.purchasedAt)
         return (res.isPurchased, date, res.purchasedBy)

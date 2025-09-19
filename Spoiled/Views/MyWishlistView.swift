@@ -108,14 +108,14 @@ struct WishlistItemRow: View {
     var isInGroupView: Bool
     let kidId: UUID?
     let groupId: UUID?
-    let groupMemberId: UUID?
+    let groupMemberId: String?
     
     init(item: WishlistItem, 
          viewModel: WishlistViewModel, 
          isInGroupView: Bool, 
          kidId: UUID? = nil, 
          groupId: UUID? = nil, 
-         groupMemberId: UUID? = nil) {
+    groupMemberId: String? = nil) {
         self.item = item
         self.viewModel = viewModel
         self.isInGroupView = isInGroupView

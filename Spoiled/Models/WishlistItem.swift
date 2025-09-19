@@ -8,10 +8,10 @@ struct WishlistItem: Identifiable, Codable, Hashable {
     var link: URL?
     var isPurchased: Bool
     var purchasedAt: Date?
-    var purchasedBy: UUID?
+    var purchasedBy: String?
     var assignedGroupIds: [UUID]
     
-    init(id: UUID = UUID(), name: String, description: String = "", price: Double? = nil, link: URL? = nil, isPurchased: Bool = false, purchasedAt: Date? = nil, purchasedBy: UUID? = nil, assignedGroupIds: [UUID] = []) {
+    init(id: UUID = UUID(), name: String, description: String = "", price: Double? = nil, link: URL? = nil, isPurchased: Bool = false, purchasedAt: Date? = nil, purchasedBy: String? = nil, assignedGroupIds: [UUID] = []) {
         self.id = id
         self.name = name
         self.description = description

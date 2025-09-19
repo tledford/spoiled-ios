@@ -9,7 +9,7 @@ struct ManageKidsView: View {
     
     var body: some View {
     List {
-            if let currentUserKids = viewModel.kids {
+            if let currentUserKids = viewModel.kids, !currentUserKids.isEmpty {
                 ForEach(Array(currentUserKids.enumerated()), id: \.element.id) { index, kid in
                     NavigationLink(destination: EditKidView(kidIndex: index)) {
                         Text(kid.name)
@@ -24,6 +24,12 @@ struct ManageKidsView: View {
                         .disabled(viewModel.deletingKidIds.contains(kid.id))
                     }
                 }
+            }
+            else {
+                Text("Click the plus (+) button to add a kid, then you can add items to their wishlist.")
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding()
             }
         }
     .navigationTitle("Manage Kids")
