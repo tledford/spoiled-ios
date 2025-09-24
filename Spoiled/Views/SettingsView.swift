@@ -39,35 +39,54 @@ struct SettingsView: View {
                 
                 Section("Account") {
                     Button(role: .destructive) {
-                        showDeleteConfirm = true
-                    } label: {
-                        Text("Delete Account")
-                    }
-                    .alert("Delete Account?", isPresented: $showDeleteConfirm) {
-                        if auth.isCurrentUserApple() {
-                            Button("Delete Now", role: .destructive) {
-                                showAppleDeletionSheet = true
-                            }
-                        } else {
-                            Button("Delete Now", role: .destructive) {
-                                Task { await auth.deleteCurrentUserWithoutApple() }
-                                toast.info("Account deleted")
-                            }
-                        }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text("This action is immediate and irreversible. Your account and all associated data will be permanently deleted.")
-                    }
-
-                    Button(role: .destructive) {
                         auth.signOut()
                     } label: {
                         Text("Sign Out")
                     }
                 }
             }
+            
+            // Delete Account text outside of List
+            VStack {
+                Text("Delete Account")
+                    .font(.footnote)
+                    .foregroundColor(.red)
+                    .onTapGesture {
+                        showDeleteConfirm = true
+                    }
+                    .padding(.top, 16)
+            }
+            .frame(maxWidth: .infinity)
+            
+            Spacer()
+            
+            // Footer with Privacy Policy
+            .safeAreaInset(edge: .bottom) {
+                VStack {
+                    Link("Privacy Policy", destination: AppConfig.api.privacyPolicyURL)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 50)
+                }
+                .frame(maxWidth: .infinity)
+            }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .alert("Delete Account?", isPresented: $showDeleteConfirm) {
+                if auth.isCurrentUserApple() {
+                    Button("Delete Now", role: .destructive) {
+                        showAppleDeletionSheet = true
+                    }
+                } else {
+                    Button("Delete Now", role: .destructive) {
+                        Task { await auth.deleteCurrentUserWithoutApple() }
+                        toast.info("Account deleted")
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This action is immediate and irreversible. Your account and all associated data will be permanently deleted.")
+            }
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileView(viewModel: viewModel)
             }

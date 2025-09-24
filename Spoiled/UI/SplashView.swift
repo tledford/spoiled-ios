@@ -6,6 +6,9 @@ struct SplashView: View {
     @ObservedObject var auth: AuthViewModel
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var hSizeClass
+    @State private var hasPerformedInitialHealth = false
+    @State private var serverStatusMessage: String?
+    private let healthService = HealthService()
 
     var body: some View {
         VStack(spacing: 24) {
@@ -29,20 +32,17 @@ struct SplashView: View {
                     ProgressView().padding(.vertical)
                 default:
                     VStack(spacing: 12) {
-                        if let serverError = auth.serverError {
+                        if let serverError = serverStatusMessage {
                             Text(serverError)
                                 .font(.footnote)
                                 .foregroundStyle(.red)
                                 .multilineTextAlignment(.center)
-                            Button("Retry") {
-                                auth.clearServerError()
-                            }
-                            .buttonStyle(.borderedProminent)
                         }
                         GoogleSignInButton(
                             scheme: colorScheme == .dark ? .dark : .light,
                             style: .wide,
                             action: { auth.signInWithGoogle() })
+                        .frame(maxWidth: 375)
                         .frame(maxWidth: .infinity)
                         .cornerRadius(8)
 
@@ -52,7 +52,9 @@ struct SplashView: View {
                             auth.handleAppleCompletion(result)
                         })
                         .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-                        .frame(maxWidth: .infinity, maxHeight: 40)
+                        .frame(height: 40)
+                        .frame(maxWidth: 375)
+                        .frame(maxWidth: .infinity)
                         .cornerRadius(8)
                     }
                     .frame(maxWidth: hSizeClass == .regular ? 420 : .infinity)
@@ -62,8 +64,20 @@ struct SplashView: View {
 //            Text("Sign in with Google or Apple")
 //                .font(.footnote)
 //                .foregroundStyle(.secondary)
+            Link("Privacy Policy", destination: AppConfig.api.privacyPolicyURL)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.top, 8)
         }
         .padding()
+        // Run health check once on first appearance. Using plain .task avoids
+        // cancellation that was happening when mutating the id-bound state.
+        .task {
+            guard !hasPerformedInitialHealth else { return }
+            let ok = await healthService.check()
+            hasPerformedInitialHealth = true
+            if !ok { serverStatusMessage = "Server unavailable." }
+        }
     }
 }
 

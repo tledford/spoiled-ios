@@ -58,39 +58,39 @@ final class DefaultAuthStore: AuthStore {
 
     func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) {
         switch result {
-    case .failure:
-            stateSubject.send(.unauthenticated)
-        case .success(let authorization):
-            guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let nonce = currentNonce,
-                  let appleIDToken = appleIDCredential.identityToken,
-                  let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+            case .failure:
                 stateSubject.send(.unauthenticated)
-                return
-            }
-
-            let credential = OAuthProvider.appleCredential(
-                withIDToken: idTokenString,
-                rawNonce: nonce,
-                fullName: appleIDCredential.fullName
-            )
-
-            Task { @MainActor in
-                do {
-                    stateSubject.send(.authenticating)
-                    let authResult = try await Auth.auth().signIn(with: credential)
-                    _ = try? await authResult.user.getIDTokenResult(forcingRefresh: true)
-                    let uid = authResult.user.uid
-                    Analytics.setUserID(uid)
-                    AnalyticsEvents.login(method: "apple")
-                    AnalyticsAuthProvider.record("apple")
-                    Crashlytics.crashlytics().setUserID(uid)
-                    stateSubject.send(.authenticated(userId: uid))
-                } catch {
+            case .success(let authorization):
+                guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                    let nonce = currentNonce,
+                    let appleIDToken = appleIDCredential.identityToken,
+                    let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
                     stateSubject.send(.unauthenticated)
+                    return
+                }
+
+                let credential = OAuthProvider.appleCredential(
+                    withIDToken: idTokenString,
+                    rawNonce: nonce,
+                    fullName: appleIDCredential.fullName
+                )
+
+                Task { @MainActor in
+                    do {
+                        stateSubject.send(.authenticating)
+                        let authResult = try await Auth.auth().signIn(with: credential)
+                        _ = try? await authResult.user.getIDTokenResult(forcingRefresh: true)
+                        let uid = authResult.user.uid
+                        Analytics.setUserID(uid)
+                        AnalyticsEvents.login(method: "apple")
+                        AnalyticsAuthProvider.record("apple")
+                        Crashlytics.crashlytics().setUserID(uid)
+                        stateSubject.send(.authenticated(userId: uid))
+                    } catch {
+                        stateSubject.send(.unauthenticated)
+                    }
                 }
             }
-        }
     }
 
     func beginAppleAccountDeletion(_ request: ASAuthorizationAppleIDRequest) {
@@ -168,9 +168,9 @@ final class DefaultAuthStore: AuthStore {
 
     func signOut() {
         // Sign out of Firebase and any provider SDKs we control.
-    GIDSignIn.sharedInstance.signOut()
-    try? Auth.auth().signOut()
-    AnalyticsEvents.logout()
+        GIDSignIn.sharedInstance.signOut()
+        try? Auth.auth().signOut()
+        AnalyticsEvents.logout()
         stateSubject.send(.unauthenticated)
     }
 
@@ -197,8 +197,7 @@ final class DefaultAuthStore: AuthStore {
                 return
             }
             let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenting)
-            guard
-                let idToken = result.user.idToken?.tokenString
+            guard let idToken = result.user.idToken?.tokenString
             else {
                 stateSubject.send(.unauthenticated)
                 return

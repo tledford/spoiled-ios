@@ -5,7 +5,6 @@ import AuthenticationServices
 @MainActor
 final class AuthViewModel: ObservableObject {
     @Published private(set) var state: AuthState
-    @Published var serverError: String? // Shown on Splash when backend unreachable
     private var cancellables = Set<AnyCancellable>()
     private let store: AuthStore
 
@@ -18,19 +17,12 @@ final class AuthViewModel: ObservableObject {
                 guard let self else { return }
                 let previous = self.state
                 self.state = newState
-                // When we first transition to authenticated, verify backend reachability.
-                if case .authenticated = newState, case .authenticated = previous {
-                    // Already authenticated previously; skip.
-                } else if case .authenticated = newState {
-                    Task { await self.verifyBackend() }
-                }
             })
             .store(in: &cancellables)
     }
 
     func signInWithGoogle() {
-    serverError = nil
-    Task { await store.signInWithGoogle() }
+        Task { await store.signInWithGoogle() }
     }
 
     // Apple Sign-In passthroughs
@@ -64,23 +56,4 @@ final class AuthViewModel: ObservableObject {
         await store.getValidIDToken(forceRefresh: forceRefresh)
     }
 
-    func clearServerError() { serverError = nil }
-
-    // MARK: - Backend verification
-    private func verifyBackend() async {
-        // Attempt a lightweight bootstrap call to ensure backend is reachable.
-        let provider: (Bool) async -> String? = { force in await self.store.getValidIDToken(forceRefresh: force) }
-        let client = APIClient(tokenProvider: provider)
-        let bootstrap = BootstrapService(client: client)
-        do {
-            _ = try await bootstrap.load()
-            // Success; nothing to do.
-        } catch {
-            await MainActor.run {
-                // Map to generic message (avoid leaking internal errors)
-                self.serverError = "Server not available. Please try again later."
-                self.store.signOut()
-            }
-        }
-    }
 }

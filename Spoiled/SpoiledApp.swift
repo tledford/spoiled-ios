@@ -11,32 +11,37 @@ import GoogleSignIn
 import UIKit
 import Combine
 
+// MARK: - App Delegate
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        FirebaseApp.configure()
+        if let clientID = FirebaseApp.app()?.options.clientID {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        } else {
+            assertionFailure("Missing Firebase clientID. Ensure GoogleService-Info.plist is included or set GIDClientID in Info.plist.")
+        }
+        return true
+    }
+    
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        return GIDSignIn.sharedInstance.handle(url)
+    }
+}
+
 @main
 struct SpoiledApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var wishlistViewModel = WishlistViewModel()
     @StateObject private var toastCenter = ToastCenter()
     @StateObject private var authViewModel = AuthViewModel()
     @State private var cancellables = Set<AnyCancellable>()
 
-    init() {
-        FirebaseApp.configure()
-        if let clientID = FirebaseApp.app()?.options.clientID {
-            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-        } else {
-            // Fallback: ensure GIDClientID is set in Info.plist if Firebase options are unavailable
-            assertionFailure("Missing Firebase clientID. Ensure GoogleService-Info.plist is included or set GIDClientID in Info.plist.")
-        }
-    }
-    
     var body: some Scene {
         WindowGroup {
             rootView
             .environmentObject(wishlistViewModel)
             .environmentObject(toastCenter)
             .environmentObject(authViewModel)
-            .onOpenURL { url in
-                GIDSignIn.sharedInstance.handle(url)
-            }
             .onReceive(NotificationCenter.default.publisher(for: .authUnauthorized)) { _ in
                 authViewModel.signOut()
                 toastCenter.info("Session expired. Please sign in again.")
