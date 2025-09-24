@@ -70,6 +70,7 @@ struct EditKidView: View {
                 .disabled(kidName.isEmpty || viewModel.isSavingKid)
             }
         }
+    .trackScreen("edit_kid")
     }
     
     private func loadKidData() {

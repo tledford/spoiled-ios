@@ -38,6 +38,7 @@ struct AddGiftIdeaView: View {
                 }
             }
         }
+    .trackScreen("add_gift_idea")
     }
     
     private func addGiftIdea() async {

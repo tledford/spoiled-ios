@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import OSLog
+import FirebaseAnalytics
 
 @MainActor
 class WishlistViewModel: ObservableObject {
@@ -113,6 +114,7 @@ class WishlistViewModel: ObservableObject {
             if data.5 {
                 // newly created account; surface a flag so UI can navigate to EditProfileView
                 NotificationCenter.default.post(name: Notification.Name("NewUserCreated"), object: nil)
+                AnalyticsEvents.signUp(method: AnalyticsAuthProvider.last())
             }
         } catch {
             #if DEBUG
@@ -151,7 +153,12 @@ class WishlistViewModel: ObservableObject {
             Task { [weak self] in
                 guard let self else { return }
                 do {
-                    _ = try await effectiveWishlist.toggleGroupMemberItem(groupId: groupId, memberUserId: memberUserId, itemId: item.id)
+                    let res = try await effectiveWishlist.toggleGroupMemberItem(groupId: groupId, memberUserId: memberUserId, itemId: item.id)
+                    if res.isPurchased {
+                        AnalyticsEvents.wishlistItemPurchased(itemId: item.id, context: "group_member")
+                    } else {
+                        AnalyticsEvents.wishlistItemUnpurchased(itemId: item.id, context: "group_member")
+                    }
                     await self.refreshAll()
                 } catch {
                     // Roll back
@@ -190,7 +197,12 @@ class WishlistViewModel: ObservableObject {
                 Task { [weak self] in
                     guard let self else { return }
                     do {
-                        _ = try await effectiveWishlist.toggleGroupKidItem(groupId: groupId, kidId: kidId, itemId: item.id)
+                        let res = try await effectiveWishlist.toggleGroupKidItem(groupId: groupId, kidId: kidId, itemId: item.id)
+                        if res.isPurchased {
+                            AnalyticsEvents.wishlistItemPurchased(itemId: item.id, context: "group_kid")
+                        } else {
+                            AnalyticsEvents.wishlistItemUnpurchased(itemId: item.id, context: "group_kid")
+                        }
                         await self.refreshAll()
                     } catch {
                         // Roll back
@@ -226,6 +238,7 @@ class WishlistViewModel: ObservableObject {
                 if let kidIndex = kids?.firstIndex(where: { $0.id == kidId }) {
                     kids?[kidIndex].wishlistItems.append(newItem)
                 }
+                AnalyticsEvents.wishlistItemCreated(itemId: newItem.id, ownerType: "kid", hasPrice: newItem.price != nil, hasLink: newItem.link != nil, isKid: true)
             } else {
                 let serverId = try await effectiveWishlist.createUserItem(userId: userId, item: item)
                 if serverId != item.id {
@@ -233,6 +246,7 @@ class WishlistViewModel: ObservableObject {
                 }
                 if wishlistItems == nil { wishlistItems = [] }
                 wishlistItems?.append(newItem)
+                AnalyticsEvents.wishlistItemCreated(itemId: newItem.id, ownerType: "user", hasPrice: newItem.price != nil, hasLink: newItem.link != nil, isKid: false)
             }
             return true
         } catch {
@@ -260,6 +274,7 @@ class WishlistViewModel: ObservableObject {
                 }
                 if groups == nil { groups = [] }
                 groups?.append(created)
+                AnalyticsEvents.groupCreated(groupId: created.id)
             } catch {
                 self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             }
@@ -283,14 +298,17 @@ class WishlistViewModel: ObservableObject {
                    let index = kids?[kidIndex].wishlistItems.firstIndex(where: { $0.id == item.id }) {
                     kids?[kidIndex].wishlistItems[index] = updated
                 }
+                AnalyticsEvents.wishlistItemUpdated(itemId: updated.id, ownerType: "kid", hasPrice: updated.price != nil, hasLink: updated.link != nil, isKid: true)
             } else {
                 try await effectiveWishlist.updateUserItem(userId: userId, item: updated)
                 if let index = wishlistItems?.firstIndex(where: { $0.id == item.id }) {
                     wishlistItems?[index] = updated
                 }
+                AnalyticsEvents.wishlistItemUpdated(itemId: updated.id, ownerType: "user", hasPrice: updated.price != nil, hasLink: updated.link != nil, isKid: false)
             }
             return true
         } catch {
+            AnalyticsEvents.error(code: "wishlist_update_failed", message: error.localizedDescription, context: "update_wishlist_item")
             #if DEBUG
             if let apiError = error as? APIError, case let .http(status, code, message, requestId, raw) = apiError {
                 WishlistViewModel.logger.error("Wishlist update failed. status=\(status) code=\(code) reqId=\(requestId ?? "") msg=\(message) raw=\(raw ?? "")")
@@ -322,6 +340,7 @@ class WishlistViewModel: ObservableObject {
                                         isPurchased: giftIdea.isPurchased)
             }
             giftIdeas?.append(ideaToInsert)
+            AnalyticsEvents.giftIdeaCreated(ideaId: ideaToInsert.id, hasUrl: ideaToInsert.url != nil)
             return true
         } catch {
             #if DEBUG
@@ -345,10 +364,34 @@ class WishlistViewModel: ObservableObject {
             if let index = giftIdeas?.firstIndex(where: { $0.id == giftIdea.id }) {
                 giftIdeas?[index] = giftIdea
             }
+            AnalyticsEvents.giftIdeaUpdated(ideaId: giftIdea.id, hasUrl: giftIdea.url != nil)
         return true
         } catch {
+            AnalyticsEvents.error(code: "gift_idea_update_failed", message: error.localizedDescription, context: "update_gift_idea")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         return false
+        }
+    }
+
+    func toggleGiftIdeaPurchased(_ idea: GiftIdea) async {
+        guard let userId = currentUser?.id else { return }
+        guard let idx = giftIdeas?.firstIndex(where: { $0.id == idea.id }) else { return }
+        var updated = idea
+        updated.isPurchased.toggle()
+        // Optimistic update
+        giftIdeas?[idx] = updated
+        do {
+            try await effectiveGiftIdeas.update(userId: userId, idea: updated)
+        } catch {
+            // Roll back on failure
+            giftIdeas?[idx] = idea
+            await MainActor.run { self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error) }
+            return
+        }
+        if updated.isPurchased {
+            AnalyticsEvents.wishlistItemPurchased(itemId: updated.id, context: "gift_idea")
+        } else {
+            AnalyticsEvents.wishlistItemUnpurchased(itemId: updated.id, context: "gift_idea")
         }
     }
 
@@ -359,8 +402,10 @@ class WishlistViewModel: ObservableObject {
             defer { deletingGiftIdeaIds.remove(giftIdea.id) }
             try await effectiveGiftIdeas.delete(userId: userId, ideaId: giftIdea.id)
             giftIdeas?.removeAll(where: { $0.id == giftIdea.id })
+            AnalyticsEvents.giftIdeaDeleted(ideaId: giftIdea.id)
         return true
         } catch {
+            AnalyticsEvents.error(code: "gift_idea_delete_failed", message: error.localizedDescription, context: "delete_gift_idea")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         return false
         }
@@ -376,12 +421,15 @@ class WishlistViewModel: ObservableObject {
                 if let kidIndex = kids?.firstIndex(where: { $0.id == kidId }) {
                     kids?[kidIndex].wishlistItems.removeAll(where: { $0.id == item.id })
                 }
+                AnalyticsEvents.wishlistItemDeleted(itemId: item.id, ownerType: "kid", isKid: true)
             } else {
                 try await effectiveWishlist.deleteUserItem(userId: userId, itemId: item.id)
                 wishlistItems?.removeAll(where: { $0.id == item.id })
+                AnalyticsEvents.wishlistItemDeleted(itemId: item.id, ownerType: "user", isKid: false)
             }
             return true
         } catch {
+            AnalyticsEvents.error(code: "wishlist_delete_failed", message: error.localizedDescription, context: "delete_wishlist_item")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }
@@ -397,6 +445,7 @@ class WishlistViewModel: ObservableObject {
         updated?.birthdate = birthdate
         updated?.sizes = sizes
         currentUser = updated
+    AnalyticsEvents.profileUpdated()
     }
     
     func updateGroup(_ group: Group, newName: String) async -> Bool {
@@ -407,8 +456,10 @@ class WishlistViewModel: ObservableObject {
             if let index = groups?.firstIndex(where: { $0.id == group.id }) {
                 groups?[index].name = newName
             }
+            AnalyticsEvents.groupUpdated(groupId: group.id)
             return true
         } catch {
+            AnalyticsEvents.error(code: "group_update_failed", message: error.localizedDescription, context: "rename_group")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }
@@ -422,6 +473,7 @@ class WishlistViewModel: ObservableObject {
             }
             return true
         } catch {
+            AnalyticsEvents.error(code: "group_remove_member_failed", message: error.localizedDescription, context: "remove_member")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }
@@ -434,8 +486,10 @@ class WishlistViewModel: ObservableObject {
             if let groupIndex = groups?.firstIndex(where: { $0.id == group.id }) {
                 groups?[groupIndex].members.append(GroupMember(name: email, wishlistItems: []))
             }
+            AnalyticsEvents.groupMemberInvited(groupId: group.id)
             return true
         } catch {
+            AnalyticsEvents.error(code: "group_invite_failed", message: error.localizedDescription, context: "invite_member")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }
@@ -447,8 +501,10 @@ class WishlistViewModel: ObservableObject {
             defer { deletingGroupIds.remove(group.id) }
             try await effectiveGroups.delete(groupId: group.id)
             groups?.removeAll(where: { $0.id == group.id })
+            AnalyticsEvents.groupDeleted(groupId: group.id)
             return true
         } catch {
+            AnalyticsEvents.error(code: "group_delete_failed", message: error.localizedDescription, context: "delete_group")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }
@@ -466,6 +522,7 @@ class WishlistViewModel: ObservableObject {
             }
             if kids == nil { kids = [] }
             kids?.append(created)
+            AnalyticsEvents.kidCreated(kidId: created.id)
             return true
         } catch {
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
@@ -482,8 +539,10 @@ class WishlistViewModel: ObservableObject {
             if let index = kids?.firstIndex(where: { $0.id == kid.id }) {
                 kids?[index] = kid
             }
+            AnalyticsEvents.kidUpdated(kidId: kid.id)
             return true
         } catch {
+            AnalyticsEvents.error(code: "kid_update_failed", message: error.localizedDescription, context: "update_kid")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }
@@ -496,8 +555,10 @@ class WishlistViewModel: ObservableObject {
             defer { deletingKidIds.remove(kid.id) }
             try await effectiveKids.delete(userId: userId, kidId: kid.id)
             kids?.removeAll(where: { $0.id == kid.id })
+            AnalyticsEvents.kidDeleted(kidId: kid.id)
             return true
         } catch {
+            AnalyticsEvents.error(code: "kid_delete_failed", message: error.localizedDescription, context: "delete_kid")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }

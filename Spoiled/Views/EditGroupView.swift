@@ -94,6 +94,7 @@ struct EditGroupView: View {
                 .environmentObject(viewModel)
                 .environmentObject(toastCenter)
         }
+    .trackScreen("edit_group")
     }
     
     private func saveGroup() {
@@ -175,5 +176,6 @@ struct AddGroupMemberView: View {
                 Text("Please enter a valid email address.")
             }
         }
+    .trackScreen("add_group_member")
     }
 } 

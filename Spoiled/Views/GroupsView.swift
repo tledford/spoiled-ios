@@ -8,7 +8,7 @@ struct GroupsView: View {
     @State private var groupToDelete: Group?
     
     var body: some View {
-        NavigationStack {
+    NavigationStack {
             List {
                 if let currentUserGroups = viewModel.groups, currentUserGroups.isEmpty {
                     Text("No groups yet. Create one by tapping the + button!")
@@ -63,7 +63,8 @@ struct GroupsView: View {
             } message: {
                 Text("This will permanently delete the group and remove memberships. This action cannot be undone.")
             }
-        }
+    }
+    .trackScreen("groups")
     }
 }
 

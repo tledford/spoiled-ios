@@ -25,6 +25,12 @@ private struct UpdateUserRequest: APIRequest {
     }
 }
 
+private struct DeleteMeRequest: APIRequest {
+    typealias Response = OkResponse
+    let path: String = "/users/me"
+    let method: String = "DELETE"
+}
+
 struct UsersService {
     let client: APIClient
     init(client: APIClient = APIClient()) { self.client = client }
@@ -34,5 +40,9 @@ struct UsersService {
         let sizesData = try JSONEncoder().encode(sizes)
         let sizesJSON = String(data: sizesData, encoding: .utf8)
         _ = try await client.execute(UpdateUserRequest(userId: userId, name: name, email: email, birthdate: birthdate, sizesJSON: sizesJSON))
+    }
+
+    func deleteMe() async throws {
+        _ = try await client.execute(DeleteMeRequest())
     }
 }

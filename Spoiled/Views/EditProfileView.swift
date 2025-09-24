@@ -83,6 +83,7 @@ struct EditProfileView: View {
                 }
             }
         }
+    .trackScreen("edit_profile")
     }
     
     private func saveProfile() async {

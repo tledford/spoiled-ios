@@ -64,6 +64,7 @@ struct AddKidView: View {
                 }
             }
         }
+    .trackScreen("add_kid")
     }
     
     private func saveKid() async {

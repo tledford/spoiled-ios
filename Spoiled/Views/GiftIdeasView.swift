@@ -3,6 +3,7 @@ import SwiftUI
 struct GiftIdeasView: View {
     @EnvironmentObject private var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
+    @Environment(\.openURL) private var openURL
     @State private var showingAddGiftIdeaSheet = false
     @State private var selectedGiftIdea: GiftIdea?
     @State private var showDeleteAlert = false
@@ -10,7 +11,7 @@ struct GiftIdeasView: View {
     @State private var hidePurchased = false
     
     var body: some View {
-        NavigationStack {
+    NavigationStack {
             List {
                 let items = viewModel.giftIdeas ?? []
                 if items.isEmpty {
@@ -34,19 +35,28 @@ struct GiftIdeasView: View {
                                                 .foregroundColor(.secondary)
                                         }
                                         if let url = giftIdea.url {
-                                            Link("View Online", destination: url)
+                                            Text("View Online")
                                                 .font(.subheadline)
                                                 .foregroundColor(.blue)
+                                                .underline()
+                                                .onTapGesture { openURL(url) }
+                                                .accessibilityAddTraits(.isLink)
                                         }
                                     }
                                     Spacer()
                                     if viewModel.deletingGiftIdeaIds.contains(giftIdea.id) {
                                         ProgressView()
                                     }
-                                    if giftIdea.isPurchased {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.green)
+                                    Button(action: {
+                                        Task { await viewModel.toggleGiftIdeaPurchased(giftIdea) }
+                                    }) {
+                                        Image(systemName: giftIdea.isPurchased ? "checkmark.circle.fill" : "circle")
+                                            .foregroundColor(giftIdea.isPurchased ? .green : .secondary)
+                                            .imageScale(.large)
+                                            .accessibilityLabel(giftIdea.isPurchased ? "Mark as not purchased" : "Mark as purchased")
                                     }
+                                    .buttonStyle(.plain)
+                                    .disabled(viewModel.isSavingGiftIdea || viewModel.deletingGiftIdeaIds.contains(giftIdea.id))
                                     // Visible affordance for available actions (alternative to swipe)
                                     Menu {
                                         Button {
@@ -134,6 +144,7 @@ struct GiftIdeasView: View {
             } message: {
                 Text("Are you sure you want to delete this gift idea? This action cannot be undone.")
             }
-        }
+    }
+    .trackScreen("gift_ideas")
     }
 }

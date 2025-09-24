@@ -61,5 +61,6 @@ struct ManageKidsView: View {
         } message: {
             Text("This will permanently delete the kid and their wishlist items (unless shared). This action cannot be undone.")
         }
+        .trackScreen("manage_kids")
     }
 } 

@@ -99,6 +99,19 @@ struct APIClient {
     }
 }
 
+extension APIClient {
+    /// Perform a simple HEAD request to the API root to test reachability.
+    func isReachable(timeout: TimeInterval = 5) async -> Bool {
+        var request = URLRequest(url: config.baseURL)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = timeout
+        do {
+            _ = try await urlSession.data(for: request)
+            return true
+        } catch { return false }
+    }
+}
+
 struct APIErrorResponse: Decodable { let error: APIErrorPayload }
 struct APIErrorResponseWithReqId: Decodable { let error: APIErrorPayload; let reqId: String? }
 struct APIErrorPayload: Decodable { let code: String; let message: String }

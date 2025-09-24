@@ -6,7 +6,7 @@ struct MyWishlistView: View {
     @State private var selectedTab = "My Items"
     
     var body: some View {
-        NavigationStack {
+    NavigationStack {
             VStack {
                 if viewModel.kids?.isEmpty == false {
                     Picker("Select List", selection: $selectedTab) {
@@ -36,7 +36,8 @@ struct MyWishlistView: View {
                 AddWishlistItemView(isForKid: selectedTab == "Kids Items")
             }
             .refreshable { await viewModel.load() }
-        }
+    }
+    .trackScreen("my_wishlist")
     }
 }
 

@@ -95,6 +95,7 @@ struct EditWishlistItemView: View {
                 }
             }
         }
+    .trackScreen(kidId == nil ? "edit_wishlist_item" : "edit_kid_wishlist_item")
     }
     
     private func saveChanges() async {

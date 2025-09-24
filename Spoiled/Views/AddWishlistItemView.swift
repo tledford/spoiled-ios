@@ -103,6 +103,7 @@ struct AddWishlistItemView: View {
                 }
             }
         }
+    .trackScreen(isForKid ? "add_kid_wishlist_item" : "add_wishlist_item")
     }
     
     private func addItem() async {

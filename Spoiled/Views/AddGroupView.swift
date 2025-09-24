@@ -47,6 +47,7 @@ struct AddGroupView: View {
                 }
             }
         }
+    .trackScreen("add_group")
     }
     
     private func createGroup() {

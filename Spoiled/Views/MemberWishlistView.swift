@@ -15,5 +15,6 @@ struct MemberWishlistView: View {
 //            }
         }
 //        .navigationTitle("\(user.name)'s Wishlist")
+    .trackScreen("member_wishlist")
     }
 } 

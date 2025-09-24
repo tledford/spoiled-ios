@@ -180,6 +180,7 @@ struct WishlistItemDetailView: View {
                 Text("Are you sure you want to delete this item? This action cannot be undone.")
             }
         }
+    .trackScreen(isInGroupView ? "group_wishlist_item_detail" : (kidId == nil ? "wishlist_item_detail" : "kid_wishlist_item_detail"))
     }
 }
 

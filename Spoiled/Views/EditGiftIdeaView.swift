@@ -49,6 +49,7 @@ struct EditGiftIdeaView: View {
                 }
             }
         }
+    .trackScreen("edit_gift_idea")
     }
     
     private func saveGiftIdea() async {
