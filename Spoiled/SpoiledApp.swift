@@ -63,7 +63,7 @@ struct SpoiledApp: App {
     private var rootView: some View {
         switch authViewModel.state {
         case .unauthenticated, .authenticating:
-            SplashView(auth: authViewModel)
+            ModernSplashView(auth: authViewModel)
         case .authenticated:
             ContentView()
         }

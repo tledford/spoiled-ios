@@ -15,22 +15,22 @@ struct ContentView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            MyWishlistView()
+            ModernMyWishlistView()
                 // .environmentObject(wishlistViewModel)
                 .tabItem { Label("Wishlist", systemImage: "gift") }
                 .tag(0)
             
-            GroupsView()
+            ModernGroupsView()
                 // .environmentObject(wishlistViewModel)
                 .tabItem { Label("Groups", systemImage: "person.3") }
                 .tag(1)
             
-            GiftIdeasView()
+            ModernGiftIdeasView()
                 // .environmentObject(wishlistViewModel)
                 .tabItem { Label("Gift Ideas", systemImage: "lightbulb") }
                 .tag(2)
             
-            SettingsView()
+            ModernSettingsView()
                 // .environmentObject(wishlistViewModel)
                 .tabItem { Label("Settings", systemImage: "gear") }
                 .tag(3)
@@ -53,10 +53,4 @@ struct ContentView: View {
             showEditProfile = true
         }
     }
-}
-
-#Preview {
-    ContentView()
-        .environmentObject(WishlistViewModel())
-        .environmentObject(ToastCenter())
 }
