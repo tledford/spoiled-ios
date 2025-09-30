@@ -36,6 +36,6 @@ struct APIConfig: Sendable {
 
 enum AppConfig {
     // Update these to swap environments quickly
-//    static var api: APIConfig = APIConfig(scheme: "http", host: "192.168.1.179", port: 8787, version: "v1") // Local dev
-     static var api: APIConfig = APIConfig(scheme: "https", host: "prod.tomled.dev", version: "v1") // CF Worker
+//   static var api: APIConfig = APIConfig(scheme: "http", host: "192.168.1.178", port: 8787, version: "v1") // Local dev
+      static var api: APIConfig = APIConfig(scheme: "https", host: "prod.tomled.dev", version: "v1") // CF Worker
 }
