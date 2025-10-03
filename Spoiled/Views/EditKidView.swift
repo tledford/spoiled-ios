@@ -13,6 +13,7 @@ struct EditKidView: View {
     @State private var shoesSize: String
     @State private var sweatshirtSize: String
     @State private var hatSize: String
+    @State private var otherParentEmail: String
 
     init(kidIndex: Int) {
         self.kidIndex = kidIndex
@@ -23,6 +24,7 @@ struct EditKidView: View {
         _shoesSize = State(initialValue: "")
         _sweatshirtSize = State(initialValue: "")
         _hatSize = State(initialValue: "")
+        _otherParentEmail = State(initialValue: "")
     }
     
     var body: some View {
@@ -34,6 +36,13 @@ struct EditKidView: View {
                     selection: $birthdate,
                     displayedComponents: [.date]
                 )
+            }
+            
+            Section(header: Text("Other Parent (Optional)")) {
+                TextField("Enter email address", text: $otherParentEmail)
+                    .keyboardType(.emailAddress)
+                    .autocapitalization(.none)
+                    .autocorrectionDisabled()
             }
             
             Section("Sizes") {
@@ -82,6 +91,11 @@ struct EditKidView: View {
             shoesSize = kid.sizes.shoes
             sweatshirtSize = kid.sizes.sweatshirt
             hatSize = kid.sizes.hat
+            
+            // Find the other parent's email (not the current user)
+            if let currentUserEmail = viewModel.currentUser?.email {
+                otherParentEmail = kid.guardianEmails.first(where: { $0 != currentUserEmail }) ?? ""
+            }
         }
     }
     
@@ -98,9 +112,11 @@ struct EditKidView: View {
                 shoes: shoesSize,
                 sweatshirt: sweatshirtSize,
                 hat: hatSize
-            )
+            ),
+            guardianEmails: currentKid.guardianEmails
         )
-        let ok = await viewModel.updateKid(updatedKid)
+        let guardianEmail = otherParentEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ok = await viewModel.updateKid(updatedKid, guardianEmail: guardianEmail.isEmpty ? nil : guardianEmail)
         if ok {
             toastCenter.success("Kid updated")
             dismiss()

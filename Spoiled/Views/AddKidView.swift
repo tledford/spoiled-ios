@@ -11,6 +11,7 @@ struct AddKidView: View {
     @State private var shoesSize: String = ""
     @State private var sweatshirtSize: String = ""
     @State private var hatSize: String = ""
+    @State private var otherParentEmail: String = ""
     
     var body: some View {
         NavigationStack {
@@ -25,6 +26,13 @@ struct AddKidView: View {
                         selection: $birthdate,
                         displayedComponents: [.date]
                     )
+                }
+                
+                Section(header: Text("Other Parent (Optional)")) {
+                    TextField("Enter email address", text: $otherParentEmail)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
                 }
                 
                 Section("Sizes") {
@@ -79,7 +87,8 @@ struct AddKidView: View {
                 hat: hatSize
             )
         )
-        let ok = await viewModel.addKid(newKid)
+        let guardianEmail = otherParentEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ok = await viewModel.addKid(newKid, guardianEmail: guardianEmail.isEmpty ? nil : guardianEmail)
         if ok {
             toastCenter.success("Kid added")
             dismiss()

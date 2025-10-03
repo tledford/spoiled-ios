@@ -47,6 +47,7 @@ struct APIKidReference: Decodable {
     let wishlistItems: [APIWishlistItem]
     let sizes: Sizes?
     let birthdate: String?
+    let guardianEmails: [String]?
 }
 
 struct APIKid: Decodable {
@@ -55,6 +56,7 @@ struct APIKid: Decodable {
     let birthdate: String? // Accept various formats/null; we'll parse later
     let wishlistItems: [APIWishlistItem]
     let sizes: Sizes
+    let guardianEmails: [String]?
 }
 
 struct APIWishlistItem: Decodable {
@@ -102,7 +104,8 @@ struct BootstrapService {
                             name: k.name,
                             wishlistItems: k.wishlistItems.map { $0.asAppModel() },
                             sizes: k.sizes ?? Sizes(),
-                            birthdate: parseAPIDate(k.birthdate)
+                            birthdate: parseAPIDate(k.birthdate),
+                            guardianEmails: k.guardianEmails ?? []
                         )
                     }
                     return GroupMember(
@@ -118,7 +121,7 @@ struct BootstrapService {
             }
 
             let kids: [Kid] = response.kids.map { k in
-                Kid(id: k.id, name: k.name, birthdate: parseAPIDate(k.birthdate) ?? Date(), wishlistItems: k.wishlistItems.map { $0.asAppModel() }, sizes: k.sizes)
+                Kid(id: k.id, name: k.name, birthdate: parseAPIDate(k.birthdate) ?? Date(), wishlistItems: k.wishlistItems.map { $0.asAppModel() }, sizes: k.sizes, guardianEmails: k.guardianEmails ?? [])
             }
 
             let myItems: [WishlistItem] = response.wishlistItems.map { $0.asAppModel() }
@@ -155,7 +158,8 @@ struct BootstrapService {
                                 name: k.name,
                                 wishlistItems: k.wishlistItems.map { $0.asAppModel() },
                                 sizes: k.sizes ?? Sizes(),
-                                birthdate: parseAPIDate(k.birthdate)
+                                birthdate: parseAPIDate(k.birthdate),
+                                guardianEmails: k.guardianEmails ?? []
                             )
                         }
                         return GroupMember(
@@ -172,7 +176,7 @@ struct BootstrapService {
                     })
                 }
                 let kids: [Kid] = response.kids.map { k in
-                    Kid(id: k.id, name: k.name, birthdate: parseAPIDate(k.birthdate) ?? Date(), wishlistItems: k.wishlistItems.map { $0.asAppModel() }, sizes: k.sizes)
+                    Kid(id: k.id, name: k.name, birthdate: parseAPIDate(k.birthdate) ?? Date(), wishlistItems: k.wishlistItems.map { $0.asAppModel() }, sizes: k.sizes, guardianEmails: k.guardianEmails ?? [])
                 }
                 let myItems: [WishlistItem] = response.wishlistItems.map { $0.asAppModel() }
                 let ideas: [GiftIdea] = response.giftIdeas.map { g in

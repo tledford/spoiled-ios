@@ -24,12 +24,14 @@ struct GroupMemberKid: Identifiable, Codable, Hashable {
     var wishlistItems: [WishlistItem]
     var sizes: Sizes
     var birthdate: Date?
+    var guardianEmails: [String]
 
-    init(id: UUID = UUID(), name: String, wishlistItems: [WishlistItem] = [], sizes: Sizes = Sizes(), birthdate: Date? = nil) {
+    init(id: UUID = UUID(), name: String, wishlistItems: [WishlistItem] = [], sizes: Sizes = Sizes(), birthdate: Date? = nil, guardianEmails: [String] = []) {
         self.id = id
         self.name = name
         self.wishlistItems = wishlistItems
         self.sizes = sizes
         self.birthdate = birthdate
+        self.guardianEmails = guardianEmails
     }
 }

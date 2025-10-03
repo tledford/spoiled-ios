@@ -524,15 +524,15 @@ class WishlistViewModel: ObservableObject {
         }
     }
 
-    func addKid(_ kid: Kid) async -> Bool {
+    func addKid(_ kid: Kid, guardianEmail: String? = nil) async -> Bool {
         guard let userId = currentUser?.id else { return false }
         do {
             isSavingKid = true
             defer { isSavingKid = false }
-            let newId = try await effectiveKids.create(userId: userId, kid: kid)
+            let newId = try await effectiveKids.create(userId: userId, kid: kid, guardianEmail: guardianEmail)
             var created = kid
             if newId != kid.id {
-                created = Kid(id: newId, name: kid.name, birthdate: kid.birthdate, wishlistItems: kid.wishlistItems, sizes: kid.sizes)
+                created = Kid(id: newId, name: kid.name, birthdate: kid.birthdate, wishlistItems: kid.wishlistItems, sizes: kid.sizes, guardianEmails: kid.guardianEmails)
             }
             if kids == nil { kids = [] }
             kids?.append(created)
@@ -544,12 +544,12 @@ class WishlistViewModel: ObservableObject {
         }
     }
 
-    func updateKid(_ kid: Kid) async -> Bool {
+    func updateKid(_ kid: Kid, guardianEmail: String? = nil) async -> Bool {
         guard let userId = currentUser?.id else { return false }
         do {
             isSavingKid = true
             defer { isSavingKid = false }
-            try await effectiveKids.update(userId: userId, kid: kid)
+            try await effectiveKids.update(userId: userId, kid: kid, guardianEmail: guardianEmail)
             if let index = kids?.firstIndex(where: { $0.id == kid.id }) {
                 kids?[index] = kid
             }
