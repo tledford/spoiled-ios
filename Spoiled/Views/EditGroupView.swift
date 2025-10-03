@@ -7,6 +7,8 @@ struct EditGroupView: View {
     @State private var name: String
     @State private var showingDeleteMemberAlert = false
     @State private var memberToDelete: GroupMember?
+    @State private var showingDeletePendingInvitationAlert = false
+    @State private var pendingInvitationToDelete: PendingInvitation?
     @State private var showingAddMemberSheet = false
     
     let group: Group
@@ -43,6 +45,27 @@ struct EditGroupView: View {
                     HStack {
                         Image(systemName: "person.badge.plus")
                         Text("Add Member")
+                    }
+                }
+            }
+            
+            if !group.pendingInvitations.isEmpty {
+                Section("Pending Invitations") {
+                    ForEach(group.pendingInvitations) { pendingInvitation in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(pendingInvitation.email)
+                                    .font(.body)
+                            }
+                            Spacer()
+                            Button(role: .destructive) {
+                                pendingInvitationToDelete = pendingInvitation
+                                showingDeletePendingInvitationAlert = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                            }
+                        }
                     }
                 }
             }
@@ -87,6 +110,29 @@ struct EditGroupView: View {
         } message: {
             if let member = memberToDelete {
                 Text("Are you sure you want to remove \(member.name) from this group?")
+            }
+        }
+        .alert("Cancel Invitation?", isPresented: $showingDeletePendingInvitationAlert) {
+            Button("No", role: .cancel) {
+                pendingInvitationToDelete = nil
+            }
+            Button("Yes", role: .destructive) {
+                if let invitation = pendingInvitationToDelete {
+                    Task {
+                        let ok = await viewModel.removePendingInvitation(email: invitation.email, from: group)
+                        if ok {
+                            await viewModel.refreshAll()
+                            toastCenter.success("Invitation cancelled")
+                        } else {
+                            toastCenter.error(viewModel.errorMessage ?? "Failed to cancel invitation")
+                        }
+                    }
+                }
+                pendingInvitationToDelete = nil
+            }
+        } message: {
+            if let invitation = pendingInvitationToDelete {
+                Text("Are you sure you want to cancel the invitation for \(invitation.email)?")
             }
         }
         .sheet(isPresented: $showingAddMemberSheet) {

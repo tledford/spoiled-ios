@@ -23,6 +23,13 @@ struct APIGroup: Decodable {
     let name: String
     let isAdmin: Bool
     let members: [APIMember]
+    let pendingInvitations: [APIPendingInvitation]?
+}
+
+struct APIPendingInvitation: Decodable {
+    let email: String
+    let role: String
+    let invitedAt: String
 }
 
 struct APIMember: Decodable {
@@ -160,7 +167,9 @@ struct BootstrapService {
                             birthdate: parseAPIDate(m.birthdate)
                         )
                     }
-                    return Group(id: g.id, name: g.name, isAdmin: g.isAdmin, members: members)
+                    return Group(id: g.id, name: g.name, isAdmin: g.isAdmin, members: members, pendingInvitations: (g.pendingInvitations ?? []).map { pi in
+                        PendingInvitation(email: pi.email, role: pi.role, invitedAt: pi.invitedAt)
+                    })
                 }
                 let kids: [Kid] = response.kids.map { k in
                     Kid(id: k.id, name: k.name, birthdate: parseAPIDate(k.birthdate) ?? Date(), wishlistItems: k.wishlistItems.map { $0.asAppModel() }, sizes: k.sizes)

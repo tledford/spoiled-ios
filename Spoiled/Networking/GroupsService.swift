@@ -79,6 +79,21 @@ struct GroupsService {
         _ = try await client.execute(RemoveMemberRequest(groupId: groupId, userId: userId))
     }
 
+    func removePendingInvitation(groupId: UUID, email: String) async throws {
+        struct RemovePendingInvitationRequest: APIRequest {
+            typealias Response = OkResponse
+            let path: String
+            let method: String = "DELETE"
+            
+            init(groupId: UUID, email: String) {
+                // URL encode the email to handle special characters
+                let encodedEmail = email.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? email
+                self.path = "/groups/\(groupId.uuidString)/pending-invitations/\(encodedEmail)"
+            }
+        }
+        _ = try await client.execute(RemovePendingInvitationRequest(groupId: groupId, email: email))
+    }
+
     func delete(groupId: UUID) async throws {
         struct DeleteGroupRequest: APIRequest {
             typealias Response = OkResponse

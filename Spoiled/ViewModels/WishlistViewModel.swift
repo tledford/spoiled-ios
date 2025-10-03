@@ -482,14 +482,28 @@ class WishlistViewModel: ObservableObject {
     func addMemberToGroup(email: String, to group: Group) async -> Bool {
         do {
             try await effectiveGroups.addMember(groupId: group.id, email: email)
-            // Optimistic UI: append a placeholder member until next refresh (name = email)
-            if let groupIndex = groups?.firstIndex(where: { $0.id == group.id }) {
-                groups?[groupIndex].members.append(GroupMember(name: email, wishlistItems: []))
-            }
+            // Note: The API will return { ok: true, pending: true/false } to indicate if user exists
+            // For now, we'll refresh to get the accurate state rather than guess
+            // Future enhancement: parse the response to determine if it should go to members or pending
             AnalyticsEvents.groupMemberInvited(groupId: group.id)
             return true
         } catch {
             AnalyticsEvents.error(code: "group_invite_failed", message: error.localizedDescription, context: "invite_member")
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            return false
+        }
+    }
+
+    func removePendingInvitation(email: String, from group: Group) async -> Bool {
+        do {
+            try await effectiveGroups.removePendingInvitation(groupId: group.id, email: email)
+            // Optimistic UI: remove from pending invitations list
+            if let groupIndex = groups?.firstIndex(where: { $0.id == group.id }) {
+                groups?[groupIndex].pendingInvitations.removeAll { $0.email == email }
+            }
+            return true
+        } catch {
+            AnalyticsEvents.error(code: "group_remove_pending_invitation_failed", message: error.localizedDescription, context: "remove_pending_invitation")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }
