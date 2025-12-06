@@ -12,53 +12,63 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                Section("Profile") {
-                    if let user = viewModel.currentUser {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(user.name)
-                                    .font(.headline)
-                                Text(user.email)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Button("Edit") {
-                                showingEditProfile = true
+            VStack(spacing: 0) {
+                List {
+                    Section("Profile") {
+                        if let user = viewModel.currentUser {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(user.name)
+                                        .font(.headline)
+                                    Text(user.email)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button("Edit") {
+                                    showingEditProfile = true
+                                }
                             }
                         }
                     }
-                }
-                
-                Section("Kids") {
-                    NavigationLink("Manage Kids") {
-                        ManageKidsView()
+                    
+                    Section("Kids") {
+                        NavigationLink("Manage Kids") {
+                            ManageKidsView()
+                        }
+                    }
+                    
+                    Section("Reports") {
+                        NavigationLink("Purchased Gifts") {
+                            PurchasedGiftsReportView()
+                        }
                     }
                 }
+                .scrollDisabled(true)
+                .frame(maxHeight: .infinity, alignment: .top)
                 
-                Section("Account") {
+                // Account actions
+                VStack(spacing: 12) {
                     Button(role: .destructive) {
                         auth.signOut()
                     } label: {
                         Text("Sign Out")
+                            .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.bordered)
+                    
+                    Text("Delete Account")
+                        .font(.footnote)
+                        .foregroundColor(.red)
+                        .onTapGesture {
+                            showDeleteConfirm = true
+                        }
                 }
+                .padding(.horizontal)
+                .padding(.vertical, 16)
+                
+                Spacer()
             }
-            
-            // Delete Account text outside of List
-            VStack {
-                Text("Delete Account")
-                    .font(.footnote)
-                    .foregroundColor(.red)
-                    .onTapGesture {
-                        showDeleteConfirm = true
-                    }
-                    .padding(.top, 16)
-            }
-            .frame(maxWidth: .infinity)
-            
-            Spacer()
             
             // Footer with Privacy Policy
             .safeAreaInset(edge: .bottom) {

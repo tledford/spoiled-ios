@@ -21,6 +21,23 @@ class WishlistViewModel: ObservableObject {
     @Published var isSavingKid: Bool = false
     @Published var deletingKidIds: Set<UUID> = []
 
+    private var refreshTimer: Timer?
+    private let refreshInterval: TimeInterval = 5 * 60 // 5 minutes
+
+    /// Start the auto-refresh timer. Only call when authenticated and app is active.
+    func startAutoRefresh() {
+        stopAutoRefresh()
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
+            Task { await self?.load() }
+        }
+    }
+
+    /// Stop the auto-refresh timer.
+    func stopAutoRefresh() {
+        refreshTimer?.invalidate()
+        refreshTimer = nil
+    }
+
     private let bootstrapService: BootstrapService
     private let usersService: UsersService
     private let giftIdeasService: GiftIdeasService

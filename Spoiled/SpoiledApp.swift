@@ -36,6 +36,8 @@ struct SpoiledApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @State private var cancellables = Set<AnyCancellable>()
 
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
             rootView
@@ -49,11 +51,23 @@ struct SpoiledApp: App {
             .onAppear {
                 if case .authenticated = authViewModel.state {
                     wishlistViewModel.configureAuth(using: authViewModel)
+                    wishlistViewModel.startAutoRefresh()
                 }
             }
             .onChange(of: authViewModel.state) { _, newState in
                 if case .authenticated = newState {
                     wishlistViewModel.configureAuth(using: authViewModel)
+                    wishlistViewModel.startAutoRefresh()
+                } else {
+                    wishlistViewModel.stopAutoRefresh()
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active, case .authenticated = authViewModel.state {
+                    Task { await wishlistViewModel.load() }
+                    wishlistViewModel.startAutoRefresh()
+                } else if newPhase == .background || newPhase == .inactive {
+                    wishlistViewModel.stopAutoRefresh()
                 }
             }
         }
