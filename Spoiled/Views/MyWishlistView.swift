@@ -213,14 +213,21 @@ struct WishlistItemRow: View {
     }
 
     var body: some View {
+        rowView
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+    }
+
+    @ViewBuilder
+    private var rowView: some View {
         if useSheet {
             Button {
                 showDetailSheet = true
             } label: {
                 rowContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .contentShape(Rectangle())
             .sheet(isPresented: $showDetailSheet) {
                 WishlistItemDetailView(
                     item: item,
@@ -247,16 +254,16 @@ struct WishlistItemRow: View {
 
     private var rowContent: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(item.name)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(isInGroupView && item.isPurchased ? .secondary : .primary)
                     .strikethrough(isInGroupView && item.isPurchased, color: .secondary)
 
                 HStack(spacing: 6) {
                     if let price = item.price {
                         Text("$\(price, specifier: "%.2f")")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                     if !isInGroupView && item.assignedGroupIds.isEmpty {
@@ -268,9 +275,8 @@ struct WishlistItemRow: View {
             if isInGroupView && item.isPurchased {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                    .font(.system(size: 20))
+                    .font(.system(size: 18))
             }
         }
-        .padding(.vertical, 4)
     }
 }
