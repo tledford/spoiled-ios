@@ -153,15 +153,15 @@ private struct GiftIdeaRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(giftIdea.giftName)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(giftIdea.isPurchased ? .secondary : .primary)
                     .strikethrough(giftIdea.isPurchased, color: .secondary)
 
                 if !giftIdea.notes.isEmpty {
                     Text(giftIdea.notes)
-                        .font(.subheadline)
+                        .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                         .italic()
                 }
@@ -173,7 +173,7 @@ private struct GiftIdeaRow: View {
                             Image(systemName: "link")
                                 .font(.system(size: 11))
                             Text("View Online")
-                                .font(.system(size: 13))
+                                .font(.system(size: 12))
                         }
                         .foregroundStyle(Color.brandGold)
                     }
@@ -194,7 +194,7 @@ private struct GiftIdeaRow: View {
                         Task { await viewModel.toggleGiftIdeaPurchased(giftIdea) }
                     } label: {
                         Image(systemName: giftIdea.isPurchased ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 24))
+                            .font(.system(size: 20))
                             .foregroundStyle(giftIdea.isPurchased ? .green : Color.secondary.opacity(0.5))
                             .scaleEffect(checkBounce ? 1.25 : 1.0)
                             .animation(
@@ -220,7 +220,7 @@ private struct GiftIdeaRow: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 18))
+                            .font(.system(size: 16))
                             .foregroundStyle(.secondary)
                     }
                     .disabled(viewModel.isSavingGiftIdea || viewModel.deletingGiftIdeaIds.contains(giftIdea.id))
@@ -228,6 +228,6 @@ private struct GiftIdeaRow: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
     }
 }
