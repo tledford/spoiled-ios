@@ -39,7 +39,7 @@ struct PurchasedGiftsReportView: View {
                                 }
                             }
                             .padding(.vertical, 8)
-                            .listRowBackground(Color.clear)
+                            .listRowBackground(Color.appSurface)
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         }
                         
@@ -75,7 +75,7 @@ struct PurchasedGiftsReportView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
                     .background(Color.appBackground.ignoresSafeArea())
                 }
@@ -234,7 +234,7 @@ private struct PurchasedGiftRow: View {
             }
         }
         .padding(.vertical, 4)
-        .listRowBackground(Color.clear)
+        .listRowBackground(Color.appSurface)
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -258,7 +258,7 @@ private struct PurchasedGiftIdeaRow: View {
             }
         }
         .padding(.vertical, 4)
-        .listRowBackground(Color.clear)
+        .listRowBackground(Color.appSurface)
     }
 }
 
@@ -280,7 +280,7 @@ private struct SummaryCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(16)
-        .background(Color(.tertiarySystemGroupedBackground))
+        .background(Color.appSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }

@@ -14,24 +14,26 @@ struct GroupsView: View {
             SwiftUI.Group {
                 if let groups = viewModel.groups, !groups.isEmpty {
                     List {
-                        ForEach(groups) { group in
-                            NavigationLink(destination: GroupDetailView(group: group)) {
-                                GroupRow(group: group)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                if group.isAdmin {
-                                    Button(role: .destructive) {
-                                        groupToDelete = group
-                                        showDeleteAlert = true
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                        Section {
+                            ForEach(groups) { group in
+                                NavigationLink(destination: GroupDetailView(group: group)) {
+                                    GroupRow(group: group)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    if group.isAdmin {
+                                        Button(role: .destructive) {
+                                            groupToDelete = group
+                                            showDeleteAlert = true
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .disabled(viewModel.deletingGroupIds.contains(group.id))
                                     }
-                                    .disabled(viewModel.deletingGroupIds.contains(group.id))
                                 }
                             }
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
                     .background(Color.appBackground.ignoresSafeArea())
                 } else {
@@ -118,7 +120,7 @@ struct GroupRow: View {
             GoldBadge(text: "\(group.members.count)")
         }
         .padding(.vertical, 4)
-        .listRowBackground(Color.clear)
+        .listRowBackground(Color.appSurface)
     }
 }
 
@@ -164,7 +166,7 @@ struct GroupDetailView: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .padding(.vertical, 4)
-                                    .listRowBackground(Color.clear)
+                                    .listRowBackground(Color.appSurface)
                             }
                         } header: {
                             MemberSectionHeader(
@@ -195,7 +197,7 @@ struct GroupDetailView: View {
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                         .padding(.vertical, 4)
-                                        .listRowBackground(Color.clear)
+                                        .listRowBackground(Color.appSurface)
                                 }
                             } header: {
                                 MemberSectionHeader(
@@ -210,7 +212,7 @@ struct GroupDetailView: View {
                     }
             }
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle(group.name)

@@ -76,7 +76,7 @@ struct GiftIdeasView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
                     .background(Color.appBackground.ignoresSafeArea())
                 }
@@ -231,6 +231,6 @@ private struct GiftIdeaRow: View {
             }
         }
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .listRowBackground(Color.clear)
+        .listRowBackground(Color.appSurface)
     }
 }

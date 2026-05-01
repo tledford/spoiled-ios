@@ -11,31 +11,33 @@ struct ManageKidsView: View {
         SwiftUI.Group {
             if let kids = viewModel.kids, !kids.isEmpty {
                 List {
-                    ForEach(Array(kids.enumerated()), id: \.element.id) { index, kid in                        NavigationLink(destination: EditKidView(kidIndex: index)) {
-                            HStack(spacing: 12) {
-                                PersonAvatar(name: kid.name, size: 36)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(kid.name)
-                                        .font(.system(size: 16, weight: .semibold))
-                                    let days = daysUntilNextBirthday(from: kid.birthdate)
-                                    BirthdayBadge(daysUntil: days)
+                    Section {
+                        ForEach(Array(kids.enumerated()), id: \.element.id) { index, kid in                        NavigationLink(destination: EditKidView(kidIndex: index)) {
+                                HStack(spacing: 12) {
+                                    PersonAvatar(name: kid.name, size: 36)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(kid.name)
+                                            .font(.system(size: 16, weight: .semibold))
+                                        let days = daysUntilNextBirthday(from: kid.birthdate)
+                                        BirthdayBadge(daysUntil: days)
+                                    }
                                 }
+                                .padding(.vertical, 4)
                             }
-                            .padding(.vertical, 4)
-                        }
-                        .listRowBackground(Color.clear)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                kidToDelete = kid
-                                showDeleteAlert = true
-                            } label: {
-                                Label("Delete", systemImage: "trash")
+                            .listRowBackground(Color.appSurface)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    kidToDelete = kid
+                                    showDeleteAlert = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                .disabled(viewModel.deletingKidIds.contains(kid.id))
                             }
-                            .disabled(viewModel.deletingKidIds.contains(kid.id))
                         }
                     }
                 }
-                .listStyle(.plain)
+                .listStyle(.insetGrouped)
                 .scrollContentBackground(.hidden)
                 .background(Color.appBackground.ignoresSafeArea())
             } else {

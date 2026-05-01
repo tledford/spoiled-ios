@@ -99,23 +99,25 @@ struct MyItemsListView: View {
     var body: some View {
         if let items = viewModel.wishlistItems, !items.isEmpty {
             List {
-                ForEach(items) { item in
-                    WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: nil, groupId: nil, groupMemberId: nil)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                Task {
-                                    let ok = await viewModel.deleteWishlistItem(item, kidId: nil)
-                                    if ok { toastCenter.success("Item deleted") }
-                                    else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
+                Section {
+                    ForEach(items) { item in
+                        WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: nil, groupId: nil, groupMemberId: nil)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    Task {
+                                        let ok = await viewModel.deleteWishlistItem(item, kidId: nil)
+                                        if ok { toastCenter.success("Item deleted") }
+                                        else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
+                                    }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
-                            } label: {
-                                Label("Delete", systemImage: "trash")
+                                .disabled(viewModel.deletingWishlistItemIds.contains(item.id))
                             }
-                            .disabled(viewModel.deletingWishlistItemIds.contains(item.id))
-                        }
+                    }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Color.appBackground.ignoresSafeArea())
         } else {
@@ -162,6 +164,7 @@ struct KidsItemsListView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .padding(.vertical, 4)
+                                .listRowBackground(Color.appSurface)
                         }
                     } header: {
                         Text(kid.name)
@@ -171,7 +174,7 @@ struct KidsItemsListView: View {
                     }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Color.appBackground.ignoresSafeArea())
         } else {
@@ -219,7 +222,7 @@ struct WishlistItemRow: View {
     var body: some View {
         rowView
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowBackground(Color.clear)
+            .listRowBackground(Color.appSurface)
     }
 
     @ViewBuilder
