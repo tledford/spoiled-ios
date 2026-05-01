@@ -234,6 +234,7 @@ private struct PurchasedGiftRow: View {
             }
         }
         .padding(.vertical, 4)
+        .listRowBackground(Color.clear)
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -257,6 +258,7 @@ private struct PurchasedGiftIdeaRow: View {
             }
         }
         .padding(.vertical, 4)
+        .listRowBackground(Color.clear)
     }
 }
 

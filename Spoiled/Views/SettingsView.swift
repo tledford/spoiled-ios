@@ -35,6 +35,7 @@ struct SettingsView: View {
                             .foregroundStyle(Color.brandGold)
                         }
                         .padding(.vertical, 6)
+                        .listRowBackground(Color.clear)
                     }
                 }
 
@@ -44,6 +45,7 @@ struct SettingsView: View {
                     } label: {
                         Label("Manage Kids", systemImage: "figure.and.child.holdinghands")
                     }
+                    .listRowBackground(Color.clear)
                 }
 
                 Section("Reports") {
@@ -52,6 +54,7 @@ struct SettingsView: View {
                     } label: {
                         Label("Purchased Gifts", systemImage: "checklist")
                     }
+                    .listRowBackground(Color.clear)
                 }
 
                 // Account actions
@@ -65,6 +68,7 @@ struct SettingsView: View {
                             Spacer()
                         }
                     }
+                    .listRowBackground(Color.clear)
                 }
 
                 // Danger zone
@@ -79,6 +83,7 @@ struct SettingsView: View {
                             Spacer()
                         }
                     }
+                    .listRowBackground(Color.clear)
                 } footer: {
                     HStack {
                         Spacer()

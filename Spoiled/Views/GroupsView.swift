@@ -118,6 +118,7 @@ struct GroupRow: View {
             GoldBadge(text: "\(group.members.count)")
         }
         .padding(.vertical, 4)
+        .listRowBackground(Color.clear)
     }
 }
 
@@ -163,6 +164,7 @@ struct GroupDetailView: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .padding(.vertical, 4)
+                                    .listRowBackground(Color.clear)
                             }
                         } header: {
                             MemberSectionHeader(
@@ -193,6 +195,7 @@ struct GroupDetailView: View {
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                         .padding(.vertical, 4)
+                                        .listRowBackground(Color.clear)
                                 }
                             } header: {
                                 MemberSectionHeader(

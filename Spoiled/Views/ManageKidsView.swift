@@ -23,6 +23,7 @@ struct ManageKidsView: View {
                             }
                             .padding(.vertical, 4)
                         }
+                        .listRowBackground(Color.clear)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
                                 kidToDelete = kid
