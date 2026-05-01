@@ -88,6 +88,8 @@ struct EditWishlistItemView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Edit Item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

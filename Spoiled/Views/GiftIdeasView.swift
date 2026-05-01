@@ -26,6 +26,7 @@ struct GiftIdeasView: View {
                             subtitle: "Tap + to add an idea. They're grouped automatically by person."
                         )
                     }
+                    .background(Color.appBackground.ignoresSafeArea())
                 } else {
                     let visible = hidePurchased ? items.filter { !$0.isPurchased } : items
                     let grouped = Dictionary(grouping: visible, by: { $0.personName })
@@ -77,6 +78,7 @@ struct GiftIdeasView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    .background(Color.appBackground.ignoresSafeArea())
                 }
             }
             .navigationTitle("Gift Ideas")

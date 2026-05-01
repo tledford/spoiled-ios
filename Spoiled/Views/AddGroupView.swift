@@ -31,6 +31,8 @@ struct AddGroupView: View {
 //                    }
 //                }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("New Group")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -90,6 +90,8 @@ struct SettingsView: View {
                     .padding(.top, 8)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .alert("Delete Account?", isPresented: $showDeleteConfirm) {
@@ -157,6 +159,8 @@ private struct AppleAccountDeletionSheet: View {
                     .padding(.top, 4)
             }
             .padding(.vertical, 32)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Delete Account")
             .navigationBarTitleDisplayMode(.inline)
         }

@@ -33,6 +33,7 @@ struct GroupsView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    .background(Color.appBackground.ignoresSafeArea())
                 } else {
                     ScrollView {
                         EmptyStateView(
@@ -41,6 +42,7 @@ struct GroupsView: View {
                             subtitle: "Create a group to share wishlists with family or friends"
                         )
                     }
+                    .background(Color.appBackground.ignoresSafeArea())
                 }
             }
             .navigationTitle("My Groups")
@@ -207,6 +209,7 @@ struct GroupDetailView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.large)
         .refreshable { await viewModel.refreshAll() }

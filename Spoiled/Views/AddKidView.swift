@@ -58,6 +58,8 @@ struct AddKidView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Add Kid")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

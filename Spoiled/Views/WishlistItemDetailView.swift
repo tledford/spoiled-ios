@@ -183,7 +183,7 @@ struct WishlistItemDetailView: View {
                 }
                 .padding(16)
             }
-            .background(Color(UIColor.systemGroupedBackground))
+            .background(Color.appBackground)
             .navigationTitle(currentItem.name)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {

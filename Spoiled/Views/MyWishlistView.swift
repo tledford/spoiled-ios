@@ -117,6 +117,7 @@ struct MyItemsListView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
         } else {
             ScrollView {
                 EmptyStateView(
@@ -125,6 +126,7 @@ struct MyItemsListView: View {
                     subtitle: "Tap + to add your first wish"
                 )
             }
+            .background(Color.appBackground.ignoresSafeArea())
         }
     }
 }
@@ -171,6 +173,7 @@ struct KidsItemsListView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
         } else {
             ScrollView {
                 EmptyStateView(
@@ -179,6 +182,7 @@ struct KidsItemsListView: View {
                     subtitle: "Add kids in Settings to manage their wishlists"
                 )
             }
+            .background(Color.appBackground.ignoresSafeArea())
         }
     }
 }

@@ -12,6 +12,8 @@ struct PurchasedGiftsReportView: View {
                         title: "No Purchased Gifts",
                         subtitle: "Gifts you've purchased will appear here"
                     )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.appBackground.ignoresSafeArea())
                 } else {
                     List {
                         // Beautiful summary header that scrolls
@@ -73,8 +75,12 @@ struct PurchasedGiftsReportView: View {
                             }
                         }
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.appBackground.ignoresSafeArea())
                 }
             }
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Purchased Gifts")
             .navigationBarTitleDisplayMode(.inline)
         }

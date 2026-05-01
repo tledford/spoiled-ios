@@ -22,6 +22,8 @@ struct AddGiftIdeaView: View {
                                        showPurchasedToggle: true)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Add Gift Idea")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -70,6 +70,8 @@ struct EditGroupView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Edit Group")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -188,6 +190,8 @@ struct AddGroupMemberView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Add Member")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

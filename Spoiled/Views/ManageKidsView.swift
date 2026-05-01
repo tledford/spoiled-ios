@@ -11,8 +11,7 @@ struct ManageKidsView: View {
         SwiftUI.Group {
             if let kids = viewModel.kids, !kids.isEmpty {
                 List {
-                    ForEach(Array(kids.enumerated()), id: \.element.id) { index, kid in
-                        NavigationLink(destination: EditKidView(kidIndex: index)) {
+                    ForEach(Array(kids.enumerated()), id: \.element.id) { index, kid in                        NavigationLink(destination: EditKidView(kidIndex: index)) {
                             HStack(spacing: 12) {
                                 PersonAvatar(name: kid.name, size: 36)
                                 VStack(alignment: .leading, spacing: 3) {
@@ -35,6 +34,9 @@ struct ManageKidsView: View {
                         }
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(Color.appBackground.ignoresSafeArea())
             } else {
                 ScrollView {
                     EmptyStateView(
@@ -43,6 +45,7 @@ struct ManageKidsView: View {
                         subtitle: "Tap + to add a kid and manage their wishlist"
                     )
                 }
+                .background(Color.appBackground.ignoresSafeArea())
             }
         }
         .navigationTitle("Manage Kids")

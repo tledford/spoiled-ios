@@ -71,6 +71,8 @@ struct EditKidView: View {
         .onAppear {
             loadKidData()
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Edit Kid")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
