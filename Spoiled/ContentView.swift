@@ -7,6 +7,9 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
+            Tab("Home", systemImage: "house.fill") {
+                HomeView()
+            }
             Tab("Wishlist", systemImage: "gift.fill") {
                 MyWishlistView()
             }
