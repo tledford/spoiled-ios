@@ -33,7 +33,7 @@ struct HomeView: View {
                 .padding(.bottom, 32)
             }
             .background(Color.appBackground.ignoresSafeArea())
-            .navigationTitle("Home")
+            .navigationTitle("Spoiled")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }
         }
@@ -77,16 +77,31 @@ struct HomeView: View {
 
     private var giftsIHavePurchasedCount: Int {
         guard let userId = viewModel.currentUser?.id else { return 0 }
-        var count = 0
         var seen = Set<UUID>()
-        for member in uniqueMembers {
-            for item in uniqueItems(for: member.id) {
+        var count = 0
+
+        func tally(_ items: [WishlistItem]) {
+            for item in items {
                 guard !seen.contains(item.id),
                       item.isPurchased,
                       item.purchasedBy == userId,
                       let at = item.purchasedAt, at >= sixMonthsAgo else { continue }
                 seen.insert(item.id)
                 count += 1
+            }
+        }
+
+        for member in uniqueMembers {
+            tally(uniqueItems(for: member.id))
+        }
+        // Also count kids' wishlist items, deduplicated by kid UUID across groups
+        var seenKids = Set<UUID>()
+        for group in viewModel.groups ?? [] {
+            for member in group.members where member.id != viewModel.currentUser?.id {
+                for kid in member.kids where !seenKids.contains(kid.id) {
+                    seenKids.insert(kid.id)
+                    tally(kid.wishlistItems)
+                }
             }
         }
         return count
@@ -483,11 +498,12 @@ private struct TipsCard: View {
                 VStack(spacing: 0) {
                     ForEach(Array(tips.enumerated()), id: \.offset) { index, tip in
                         HStack(alignment: .top, spacing: 14) {
-                            Image(systemName: tip.icon)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color.brandGold)
-                                .frame(width: 20)
-                                .padding(.top, 1)
+                            ZStack {
+                                Image(systemName: tip.icon)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(Color.brandGold)
+                            }
+                            .frame(width: 20, height: 20)
                             Text(tip.text)
                                 .font(.system(size: 14))
                                 .foregroundStyle(.primary.opacity(0.85))
