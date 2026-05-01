@@ -108,7 +108,7 @@ struct HomeView: View {
     }
 
     private var myActiveWishlistCount: Int {
-        viewModel.wishlistItems?.filter { !$0.isPurchased }.count ?? 0
+        viewModel.wishlistItems?.count ?? 0
     }
 
     private var giftIdeasCount: Int {
@@ -301,8 +301,12 @@ private struct QuickStatsRow: View {
             }
             .buttonStyle(.plain)
 
-            StatCard(icon: "list.bullet", value: "\(activeWishlist)", label: "My Wishlist", tint: .blue)
-            NavigationLink(destination: GiftIdeasView()) {
+            NavigationLink(destination: MyWishlistView()) {
+                StatCard(icon: "list.bullet", value: "\(activeWishlist)", label: "My Wishlist", tint: .blue)
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink(destination: GiftIdeasView(startHidingPurchased: true)) {
                 StatCard(icon: "lightbulb.fill", value: "\(giftIdeas)", label: "Gift Ideas", tint: Color.brandRose)
             }
             .buttonStyle(.plain)

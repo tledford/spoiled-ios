@@ -8,7 +8,11 @@ struct GiftIdeasView: View {
     @State private var selectedGiftIdea: GiftIdea?
     @State private var showDeleteAlert = false
     @State private var giftIdeaToDelete: GiftIdea?
-    @State private var hidePurchased = false
+    @State private var hidePurchased: Bool
+
+    init(startHidingPurchased: Bool = false) {
+        _hidePurchased = State(initialValue: startHidingPurchased)
+    }
 
     var body: some View {
         NavigationStack {
@@ -79,7 +83,7 @@ struct GiftIdeasView: View {
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         withAnimation(.spring(response: 0.3)) { hidePurchased.toggle() }
                     } label: {
