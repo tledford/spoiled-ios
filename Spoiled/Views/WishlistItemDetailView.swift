@@ -8,6 +8,7 @@ struct WishlistItemDetailView: View {
     let kidId: UUID?
     let groupId: UUID?
     let groupMemberId: String?
+    var presentedAsSheet: Bool = false
     @EnvironmentObject private var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
@@ -186,6 +187,12 @@ struct WishlistItemDetailView: View {
             .navigationTitle(currentItem.name)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                if presentedAsSheet {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { dismiss() }
+                            .fontWeight(.semibold)
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     if !isInGroupView {
                         Button("Edit") { showingEditSheet = true }

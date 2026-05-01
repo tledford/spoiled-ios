@@ -192,55 +192,85 @@ struct WishlistItemRow: View {
     let kidId: UUID?
     let groupId: UUID?
     let groupMemberId: String?
+    var useSheet: Bool = false
+
+    @State private var showDetailSheet = false
 
     init(item: WishlistItem,
          viewModel: WishlistViewModel,
          isInGroupView: Bool,
          kidId: UUID? = nil,
          groupId: UUID? = nil,
-         groupMemberId: String? = nil) {
+         groupMemberId: String? = nil,
+         useSheet: Bool = false) {
         self.item = item
         self.viewModel = viewModel
         self.isInGroupView = isInGroupView
         self.kidId = kidId
         self.groupId = groupId
         self.groupMemberId = groupMemberId
+        self.useSheet = useSheet
     }
 
     var body: some View {
-        NavigationLink(destination: WishlistItemDetailView(
-            item: item,
-            isInGroupView: isInGroupView,
-            kidId: kidId,
-            groupId: groupId,
-            groupMemberId: groupMemberId
-        )) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(item.name)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(isInGroupView && item.isPurchased ? .secondary : .primary)
-                        .strikethrough(isInGroupView && item.isPurchased, color: .secondary)
+        if useSheet {
+            Button {
+                showDetailSheet = true
+            } label: {
+                rowContent
+            }
+            .buttonStyle(.plain)
+            .contentShape(Rectangle())
+            .sheet(isPresented: $showDetailSheet) {
+                WishlistItemDetailView(
+                    item: item,
+                    isInGroupView: isInGroupView,
+                    kidId: kidId,
+                    groupId: groupId,
+                    groupMemberId: groupMemberId,
+                    presentedAsSheet: true
+                )
+                .environmentObject(viewModel)
+            }
+        } else {
+            NavigationLink(destination: WishlistItemDetailView(
+                item: item,
+                isInGroupView: isInGroupView,
+                kidId: kidId,
+                groupId: groupId,
+                groupMemberId: groupMemberId
+            )) {
+                rowContent
+            }
+        }
+    }
 
-                    HStack(spacing: 6) {
-                        if let price = item.price {
-                            Text("$\(price, specifier: "%.2f")")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(.secondary)
-                        }
-                        if !isInGroupView && item.assignedGroupIds.isEmpty {
-                            PrivateBadge()
-                        }
+    private var rowContent: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.name)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(isInGroupView && item.isPurchased ? .secondary : .primary)
+                    .strikethrough(isInGroupView && item.isPurchased, color: .secondary)
+
+                HStack(spacing: 6) {
+                    if let price = item.price {
+                        Text("$\(price, specifier: "%.2f")")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    if !isInGroupView && item.assignedGroupIds.isEmpty {
+                        PrivateBadge()
                     }
                 }
-                Spacer()
-                if isInGroupView && item.isPurchased {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.system(size: 20))
-                }
             }
-            .padding(.vertical, 4)
+            Spacer()
+            if isInGroupView && item.isPurchased {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.system(size: 20))
+            }
         }
+        .padding(.vertical, 4)
     }
 }

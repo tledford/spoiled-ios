@@ -141,66 +141,68 @@ struct GroupDetailView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(.init())
             } else {
-                ForEach(group.members) { member in
-                    // Personal wishlist section
-                    Section {
-                        if !member.wishlistItems.isEmpty {
-                            ForEach(member.wishlistItems) { item in
-                                WishlistItemRow(
-                                    item: item,
-                                    viewModel: viewModel,
-                                    isInGroupView: true,
-                                    kidId: nil,
-                                    groupId: group.id,
-                                    groupMemberId: member.id
-                                )
-                            }
-                        } else {
-                            Text("No personal wishlist items")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .padding(.vertical, 4)
-                        }
-                    } header: {
-                        MemberSectionHeader(
-                            name: member.name,
-                            birthdate: member.birthdate,
-                            sizes: member.sizes,
-                            onSizesTap: { sizesToShow = IdentSizes(member.sizes) }
-                        )
-                    }
-
-                    // Kids sections
-                    ForEach(member.kids) { kid in
+                    ForEach(group.members) { member in
+                        // Personal wishlist section
                         Section {
-                            if !kid.wishlistItems.isEmpty {
-                                ForEach(kid.wishlistItems) { item in
+                            if !member.wishlistItems.isEmpty {
+                                ForEach(member.wishlistItems) { item in
                                     WishlistItemRow(
                                         item: item,
                                         viewModel: viewModel,
                                         isInGroupView: true,
-                                        kidId: kid.id,
+                                        kidId: nil,
                                         groupId: group.id,
-                                        groupMemberId: member.id
+                                        groupMemberId: member.id,
+                                        useSheet: true
                                     )
                                 }
                             } else {
-                                Text("No wishlist items")
+                                Text("No personal wishlist items")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .padding(.vertical, 4)
                             }
                         } header: {
                             MemberSectionHeader(
-                                name: kid.name,
-                                birthdate: kid.birthdate,
-                                sizes: kid.sizes,
-                                isKid: true,
-                                onSizesTap: { sizesToShow = IdentSizes(kid.sizes) }
+                                name: member.name,
+                                birthdate: member.birthdate,
+                                sizes: member.sizes,
+                                onSizesTap: { sizesToShow = IdentSizes(member.sizes) }
                             )
                         }
+
+                        // Kids sections
+                        ForEach(member.kids) { kid in
+                            Section {
+                                if !kid.wishlistItems.isEmpty {
+                                    ForEach(kid.wishlistItems) { item in
+                                        WishlistItemRow(
+                                            item: item,
+                                            viewModel: viewModel,
+                                            isInGroupView: true,
+                                            kidId: kid.id,
+                                            groupId: group.id,
+                                            groupMemberId: member.id,
+                                            useSheet: true
+                                        )
+                                    }
+                                } else {
+                                    Text("No wishlist items")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.vertical, 4)
+                                }
+                            } header: {
+                                MemberSectionHeader(
+                                    name: kid.name,
+                                    birthdate: kid.birthdate,
+                                    sizes: kid.sizes,
+                                    isKid: true,
+                                    onSizesTap: { sizesToShow = IdentSizes(kid.sizes) }
+                                )
+                            }
+                        }
                     }
-                }
             }
         }
         .listStyle(.plain)
