@@ -1,7 +1,6 @@
 import SwiftUI
 
 /// Reusable labeled form fields for creating or editing a GiftIdea.
-/// Caller owns state & validation; this view only renders bindings.
 struct GiftIdeaFormFields: View {
     @Binding var personName: String
     @Binding var giftName: String
@@ -35,7 +34,7 @@ struct GiftIdeaFormFields: View {
                     .textInputAutocapitalization(.words)
             }
             field(label: "URL") {
-                TextField("", text: $urlString)
+                TextField("https://", text: $urlString)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
@@ -45,10 +44,8 @@ struct GiftIdeaFormFields: View {
                     .lineLimit(3...6)
             }
             if showPurchasedToggle {
-                field(label: "Purchased") {
-                    Toggle("", isOn: $isPurchased)
-                        .labelsHidden()
-                }
+                Toggle("Purchased", isOn: $isPurchased)
+                    .tint(.brandGold)
             }
         }
     }

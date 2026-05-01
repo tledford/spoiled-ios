@@ -1,26 +1,23 @@
 import SwiftUI
 
+// MARK: - GroupsView
+
 struct GroupsView: View {
     @EnvironmentObject private var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
     @State private var showingAddGroupSheet = false
     @State private var showDeleteAlert = false
     @State private var groupToDelete: Group?
-    
+
     var body: some View {
-    NavigationStack {
-            List {
-                if let currentUserGroups = viewModel.groups, currentUserGroups.isEmpty {
-                    Text("No groups yet. Create one by tapping the + button!")
-                        .foregroundColor(.secondary)
-                        .padding()
-                } else {
-                    ForEach(viewModel.groups ?? []) { group in
-//                        if viewModel.currentUser?.groups.contains(where: { $0.id == group.id }) == true {
+        NavigationStack {
+            SwiftUI.Group {
+                if let groups = viewModel.groups, !groups.isEmpty {
+                    List {
+                        ForEach(groups) { group in
                             NavigationLink(destination: GroupDetailView(group: group)) {
                                 GroupRow(group: group)
                             }
-//                        }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 if group.isAdmin {
                                     Button(role: .destructive) {
@@ -32,16 +29,30 @@ struct GroupsView: View {
                                     .disabled(viewModel.deletingGroupIds.contains(group.id))
                                 }
                             }
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                } else {
+                    ScrollView {
+                        EmptyStateView(
+                            systemImage: "person.3",
+                            title: "No groups yet",
+                            subtitle: "Create a group to share wishlists with family or friends"
+                        )
                     }
                 }
             }
             .navigationTitle("My Groups")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddGroupSheet = true }) {
+                    Button {
+                        showingAddGroupSheet = true
+                    } label: {
                         Image(systemName: "plus")
+                            .fontWeight(.semibold)
                     }
                 }
             }
@@ -63,21 +74,52 @@ struct GroupsView: View {
             } message: {
                 Text("This will permanently delete the group and remove memberships. This action cannot be undone.")
             }
-    }
-    .trackScreen("groups")
+        }
+        .trackScreen("groups")
     }
 }
 
+// MARK: - GroupRow
+
 struct GroupRow: View {
     let group: Group
-    
+
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(group.name)
-                .font(.headline)
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.brandGold.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.brandGold)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(group.name)
+                        .font(.system(size: 16, weight: .semibold))
+                    if group.isAdmin {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.brandGold)
+                    }
+                }
+                let count = group.members.count
+                Text(count == 1 ? "1 member" : "\(count) members")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            GoldBadge(text: "\(group.members.count)")
         }
+        .padding(.vertical, 4)
     }
 }
+
+// MARK: - GroupDetailView
 
 struct GroupDetailView: View {
     let group: Group
@@ -85,15 +127,22 @@ struct GroupDetailView: View {
     @EnvironmentObject private var toastCenter: ToastCenter
     @State private var showDeleteAlert = false
     @State private var sizesToShow: IdentSizes? = nil
-    
+
     var body: some View {
         List {
             if group.members.isEmpty {
-                Text("No other members in this group")
-                    .foregroundColor(.secondary)
-                    .padding()
+                Section {
+                    EmptyStateView(
+                        systemImage: "person.2",
+                        title: "No members yet",
+                        subtitle: "Add members in the group settings"
+                    )
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(.init())
             } else {
                 ForEach(group.members) { member in
+                    // Personal wishlist section
                     Section {
                         if !member.wishlistItems.isEmpty {
                             ForEach(member.wishlistItems) { item in
@@ -108,34 +157,20 @@ struct GroupDetailView: View {
                             }
                         } else {
                             Text("No personal wishlist items")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.vertical, 4)
                         }
                     } header: {
-                        HStack(spacing: 8) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 6) {
-                                    Text(member.name)
-                                    if hasNonEmptySizes(member.sizes) {
-                                        Button {
-                                            sizesToShow = IdentSizes(member.sizes)
-                                        } label: {
-                                            Image(systemName: "exclamationmark.circle")
-                                        }
-                                        .buttonStyle(.plain)
-                                        .foregroundColor(.blue)
-                                        .accessibilityLabel("View sizes for \(member.name)")
-                                    }
-                                }
-                                if let b = member.birthdate {
-                                    Text(birthdayLine(from: b))
-                                        .font(.footnote)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
+                        MemberSectionHeader(
+                            name: member.name,
+                            birthdate: member.birthdate,
+                            sizes: member.sizes,
+                            onSizesTap: { sizesToShow = IdentSizes(member.sizes) }
+                        )
                     }
 
+                    // Kids sections
                     ForEach(member.kids) { kid in
                         Section {
                             if !kid.wishlistItems.isEmpty {
@@ -151,40 +186,28 @@ struct GroupDetailView: View {
                                 }
                             } else {
                                 Text("No wishlist items")
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.vertical, 4)
                             }
                         } header: {
-                            HStack(spacing: 8) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    HStack(spacing: 6) {
-                                        Text(kid.name)
-                                        if hasNonEmptySizes(kid.sizes) {
-                                            Button {
-                                                sizesToShow = IdentSizes(kid.sizes)
-                                            } label: {
-                                                Image(systemName: "exclamationmark.circle")
-                                            }
-                                            .buttonStyle(.plain)
-                                            .foregroundColor(.blue)
-                                            .accessibilityLabel("View sizes for \(kid.name)")
-                                        }
-                                    }
-                                    if let b = kid.birthdate {
-                                        Text(birthdayLine(from: b))
-                                            .font(.footnote)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                            }
+                            MemberSectionHeader(
+                                name: kid.name,
+                                birthdate: kid.birthdate,
+                                sizes: kid.sizes,
+                                isKid: true,
+                                onSizesTap: { sizesToShow = IdentSizes(kid.sizes) }
+                            )
                         }
                     }
                 }
             }
         }
-    .navigationTitle(group.name)
-    .navigationBarTitleDisplayMode(.inline)
-    .refreshable { await viewModel.refreshAll() }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .navigationTitle(group.name)
+        .navigationBarTitleDisplayMode(.large)
+        .refreshable { await viewModel.refreshAll() }
         .toolbar {
             if group.isAdmin {
                 ToolbarItem(placement: .primaryAction) {
@@ -192,7 +215,7 @@ struct GroupDetailView: View {
                         NavigationLink {
                             EditGroupView(group: group)
                         } label: {
-                            Label("Edit", systemImage: "pencil")
+                            Label("Edit Group", systemImage: "pencil")
                         }
                         Button(role: .destructive) {
                             showDeleteAlert = true
@@ -218,9 +241,9 @@ struct GroupDetailView: View {
         } message: {
             Text("This will permanently delete the group and remove memberships. This action cannot be undone.")
         }
-    .sheet(item: $sizesToShow) { sizes in
+        .sheet(item: $sizesToShow) { sizes in
             NavigationStack {
-        ListSizesView(sizes: sizes.value)
+                ListSizesView(sizes: sizes.value)
                     .navigationTitle("Sizes")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -231,15 +254,83 @@ struct GroupDetailView: View {
             }
         }
     }
-} 
+}
+
+// MARK: - MemberSectionHeader
+
+private struct MemberSectionHeader: View {
+    let name: String
+    let birthdate: Date?
+    let sizes: Sizes
+    var isKid: Bool = false
+    let onSizesTap: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            PersonAvatar(name: name, size: 32)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .textCase(nil)
+
+                if let b = birthdate {
+                    let days = daysUntilNextBirthday(from: b)
+                    BirthdayBadge(daysUntil: days)
+                }
+            }
+
+            Spacer()
+
+            if hasNonEmptySizes(sizes) {
+                SizesPillButton(action: onSizesTap)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - ListSizesView
+
+struct ListSizesView: View {
+    let sizes: Sizes
+
+    var body: some View {
+        List {
+            if !sizes.shirt.isEmpty     { sizeRow(label: "Shirt",       value: sizes.shirt) }
+            if !sizes.pants.isEmpty     { sizeRow(label: "Pants",       value: sizes.pants) }
+            if !sizes.shoes.isEmpty     { sizeRow(label: "Shoes",       value: sizes.shoes) }
+            if !sizes.sweatshirt.isEmpty { sizeRow(label: "Sweatshirt", value: sizes.sweatshirt) }
+            if !sizes.hat.isEmpty       { sizeRow(label: "Hat",         value: sizes.hat) }
+            if sizes.shirt.isEmpty && sizes.pants.isEmpty && sizes.shoes.isEmpty
+                && sizes.sweatshirt.isEmpty && sizes.hat.isEmpty {
+                Text("No sizes provided")
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sizeRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Text(value).foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - Helpers
 
 private func hasNonEmptySizes(_ sizes: Sizes) -> Bool {
-    return !sizes.shirt.isEmpty || !sizes.pants.isEmpty || !sizes.shoes.isEmpty || !sizes.sweatshirt.isEmpty || !sizes.hat.isEmpty
+    !sizes.shirt.isEmpty || !sizes.pants.isEmpty || !sizes.shoes.isEmpty
+        || !sizes.sweatshirt.isEmpty || !sizes.hat.isEmpty
 }
 
 private func birthdayLine(from birthdate: Date) -> String {
     let days = daysUntilNextBirthday(from: birthdate)
-    // Show upcoming date (month/day) and days remaining
     let next = nextBirthdayDate(from: birthdate)
     let md = DateFormatter()
     md.setLocalizedDateFormatFromTemplate("MMMMd")
@@ -258,7 +349,7 @@ private func nextBirthdayDate(from birthdate: Date, relativeTo now: Date = Date(
     return cal.date(from: comps) ?? thisYear
 }
 
-private func daysUntilNextBirthday(from birthdate: Date, relativeTo now: Date = Date()) -> Int {
+func daysUntilNextBirthday(from birthdate: Date, relativeTo now: Date = Date()) -> Int {
     let cal = Calendar.current
     let start = cal.startOfDay(for: now)
     let next = nextBirthdayDate(from: birthdate, relativeTo: start)
@@ -266,37 +357,10 @@ private func daysUntilNextBirthday(from birthdate: Date, relativeTo now: Date = 
     return max(0, days)
 }
 
-// Identifiable wrapper so we can use .sheet(item:) and always pass the selected sizes
+// MARK: - IdentSizes
+
 struct IdentSizes: Identifiable, Equatable {
     let id = UUID()
     let value: Sizes
     init(_ value: Sizes) { self.value = value }
-}
-
-struct ListSizesView: View {
-    let sizes: Sizes
-    var body: some View {
-        List {
-            if !sizes.shirt.isEmpty { row(label: "Shirt", value: sizes.shirt) }
-            if !sizes.pants.isEmpty { row(label: "Pants", value: sizes.pants) }
-            if !sizes.shoes.isEmpty { row(label: "Shoes", value: sizes.shoes) }
-            if !sizes.sweatshirt.isEmpty { row(label: "Sweatshirt", value: sizes.sweatshirt) }
-            if !sizes.hat.isEmpty { row(label: "Hat", value: sizes.hat) }
-            if sizes.shirt.isEmpty && sizes.pants.isEmpty && sizes.shoes.isEmpty && sizes.sweatshirt.isEmpty && sizes.hat.isEmpty {
-                Text("No sizes provided")
-                    .foregroundColor(.secondary)
-                    .padding(.vertical, 8)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func row(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Text(value)
-                .foregroundColor(.secondary)
-        }
-    }
 }

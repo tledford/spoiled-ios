@@ -6,39 +6,55 @@ struct ManageKidsView: View {
     @State private var showingAddKidSheet = false
     @State private var showDeleteAlert = false
     @State private var kidToDelete: Kid?
-    
+
     var body: some View {
-    List {
-            if let currentUserKids = viewModel.kids, !currentUserKids.isEmpty {
-                ForEach(Array(currentUserKids.enumerated()), id: \.element.id) { index, kid in
-                    NavigationLink(destination: EditKidView(kidIndex: index)) {
-                        Text(kid.name)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            kidToDelete = kid
-                            showDeleteAlert = true
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+        SwiftUI.Group {
+            if let kids = viewModel.kids, !kids.isEmpty {
+                List {
+                    ForEach(Array(kids.enumerated()), id: \.element.id) { index, kid in
+                        NavigationLink(destination: EditKidView(kidIndex: index)) {
+                            HStack(spacing: 12) {
+                                PersonAvatar(name: kid.name, size: 36)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(kid.name)
+                                        .font(.system(size: 16, weight: .semibold))
+                                    let days = daysUntilNextBirthday(from: kid.birthdate)
+                                    BirthdayBadge(daysUntil: days)
+                                }
+                            }
+                            .padding(.vertical, 4)
                         }
-                        .disabled(viewModel.deletingKidIds.contains(kid.id))
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                kidToDelete = kid
+                                showDeleteAlert = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .disabled(viewModel.deletingKidIds.contains(kid.id))
+                        }
                     }
                 }
-            }
-            else {
-                Text("Click the plus (+) button to add a kid, then you can add items to their wishlist.")
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding()
+            } else {
+                ScrollView {
+                    EmptyStateView(
+                        systemImage: "figure.and.child.holdinghands",
+                        title: "No kids yet",
+                        subtitle: "Tap + to add a kid and manage their wishlist"
+                    )
+                }
             }
         }
-    .navigationTitle("Manage Kids")
-    .navigationBarTitleDisplayMode(.inline)
-    .refreshable { await viewModel.refreshAll() }
+        .navigationTitle("Manage Kids")
+        .navigationBarTitleDisplayMode(.large)
+        .refreshable { await viewModel.refreshAll() }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { showingAddKidSheet = true }) {
+                Button {
+                    showingAddKidSheet = true
+                } label: {
                     Image(systemName: "plus")
+                        .fontWeight(.semibold)
                 }
             }
         }
@@ -63,4 +79,4 @@ struct ManageKidsView: View {
         }
         .trackScreen("manage_kids")
     }
-} 
+}

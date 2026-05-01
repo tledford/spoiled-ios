@@ -7,18 +7,11 @@ struct PurchasedGiftsReportView: View {
         NavigationStack {
             VStack {
                 if allPurchasedGiftsInLastSixMonths.isEmpty && purchasedGiftIdeas.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "gift")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        Text("No Purchased Gifts")
-                            .font(.headline)
-                        Text("No gifts have been marked as purchased.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    EmptyStateView(
+                        systemImage: "gift.fill",
+                        title: "No Purchased Gifts",
+                        subtitle: "Gifts you've purchased will appear here"
+                    )
                 } else {
                     List {
                         // Beautiful summary header that scrolls
@@ -267,23 +260,20 @@ private struct SummaryCard: View {
     let count: Int
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 24))
-                .foregroundColor(.blue)
-            
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Color.brandGold)
+            Text("\(count)")
+                .font(.system(size: 28, weight: .black))
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
-            
-            Text("\(count)")
-                .font(.title2)
-                .fontWeight(.bold)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(16)
         .background(Color(.tertiarySystemGroupedBackground))
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 
