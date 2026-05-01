@@ -112,7 +112,7 @@ struct HomeView: View {
     }
 
     private var giftIdeasCount: Int {
-        viewModel.giftIdeas?.count ?? 0
+        viewModel.giftIdeas?.filter { !$0.isPurchased }.count ?? 0
     }
 
     // MARK: - Birthday entries
@@ -302,7 +302,10 @@ private struct QuickStatsRow: View {
             .buttonStyle(.plain)
 
             StatCard(icon: "list.bullet", value: "\(activeWishlist)", label: "My Wishlist", tint: .blue)
-            StatCard(icon: "lightbulb.fill", value: "\(giftIdeas)", label: "Gift Ideas", tint: Color.brandRose)
+            NavigationLink(destination: GiftIdeasView()) {
+                StatCard(icon: "lightbulb.fill", value: "\(giftIdeas)", label: "Gift Ideas", tint: Color.brandRose)
+            }
+            .buttonStyle(.plain)
         }
     }
 }
