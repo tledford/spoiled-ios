@@ -148,42 +148,42 @@
             landmarkType = "7">
             <Locations>
                <Location
-                  uuid = "48633EF2-BB1F-484F-AABA-360EE63BFFCA - beb6da4db3ae0cdf"
+                  uuid = "48633EF2-BB1F-484F-AABA-360EE63BFFCA - 1dc4602e2029058a"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
                   symbolName = "(7) suspend resume partial function for Spoiled.DefaultAuthStore.deleteCurrentUserWithoutApple() async -&gt; ()"
                   moduleName = "Spoiled.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/tommy/dev/spoiled-wishlist/Spoiled-ios/Spoiled/Auth/AuthStore.swift"
+                  urlString = "file:///Users/tommy/dev/spoiled/spoiled-ios/Spoiled/Auth/AuthStore.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
                   startingLineNumber = "147"
                   endingLineNumber = "147">
                </Location>
                <Location
-                  uuid = "48633EF2-BB1F-484F-AABA-360EE63BFFCA - 6c4fc2b39cf824fd"
+                  uuid = "48633EF2-BB1F-484F-AABA-360EE63BFFCA - cf3d78d00f7f2da8"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
                   symbolName = "(8) await resume partial function for Spoiled.DefaultAuthStore.deleteCurrentUserWithoutApple() async -&gt; ()"
                   moduleName = "Spoiled.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/tommy/dev/spoiled-wishlist/Spoiled-ios/Spoiled/Auth/AuthStore.swift"
+                  urlString = "file:///Users/tommy/dev/spoiled/spoiled-ios/Spoiled/Auth/AuthStore.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
                   startingLineNumber = "147"
                   endingLineNumber = "147">
                </Location>
                <Location
-                  uuid = "48633EF2-BB1F-484F-AABA-360EE63BFFCA - 3a7da609e2350400"
+                  uuid = "48633EF2-BB1F-484F-AABA-360EE63BFFCA - 990f1c6a71b20d55"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
                   symbolName = "(11) suspend resume partial function for Spoiled.DefaultAuthStore.deleteCurrentUserWithoutApple() async -&gt; ()"
                   moduleName = "Spoiled.debug.dylib"
                   usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/tommy/dev/spoiled-wishlist/Spoiled-ios/Spoiled/Auth/AuthStore.swift"
+                  urlString = "file:///Users/tommy/dev/spoiled/spoiled-ios/Spoiled/Auth/AuthStore.swift"
                   startingColumnNumber = "9223372036854775807"
                   endingColumnNumber = "9223372036854775807"
                   startingLineNumber = "147"

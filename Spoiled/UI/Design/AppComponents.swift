@@ -125,6 +125,48 @@ struct PrivateBadge: View {
     }
 }
 
+// MARK: - AppSectionHeader
+/// Standard section header with an icon and gold-colored title.
+struct AppSectionHeader: View {
+    let icon: String
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.brandGold)
+            Text(title.uppercased())
+                .font(.system(size: 12, weight: .bold))
+                .tracking(0.8)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - NavButton
+/// Consistent style for navigation bar buttons with an appSurface background.
+struct NavButtonModifier: ViewModifier {
+    var color: Color = .brandBlue
+    var isIcon: Bool = true
+
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(color)
+            .frame(width: isIcon ? 36 : nil, height: 36)
+            .padding(.horizontal, isIcon ? 0 : 14)
+            .background(Color.navButtonBackground)
+            .clipShape(Capsule())
+    }
+}
+
+extension View {
+    func navButton(color: Color = .brandBlue, isIcon: Bool = true) -> some View {
+        modifier(NavButtonModifier(color: color, isIcon: isIcon))
+    }
+}
+
 // MARK: - SpoiledCard
 /// A rounded card surface. Use as a container `.modifier(SpoiledCardModifier())` or wrap
 /// content with `SpoiledCard { ... }`.
@@ -138,14 +180,7 @@ struct SpoiledCardModifier: ViewModifier {
     }
 
     @ViewBuilder private var cardBackground: some View {
-        if #available(iOS 26, *) {
-            Color.clear
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        } else {
-            Color(scheme == .dark
-                  ? UIColor(red: 0.12, green: 0.13, blue: 0.20, alpha: 1)
-                  : UIColor.secondarySystemGroupedBackground)
-        }
+        Color.appSurface
     }
 }
 

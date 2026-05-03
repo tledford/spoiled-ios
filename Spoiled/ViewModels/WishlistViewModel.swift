@@ -594,4 +594,42 @@ class WishlistViewModel: ObservableObject {
             return false
         }
     }
+
+    // MARK: - Purchased Items for Others
+    
+    struct PurchasedItem: Identifiable {
+        let id: UUID
+        let item: WishlistItem
+        let recipientName: String
+    }
+    
+    var purchasedWishlistItems: [PurchasedItem] {
+        guard let userId = currentUser?.id else { return [] }
+        var result: [PurchasedItem] = []
+        var seen = Set<UUID>()
+        
+        // Items from group members
+        for group in groups ?? [] {
+            for member in group.members where member.id != userId {
+                for item in member.wishlistItems where item.isPurchased && item.purchasedBy == userId {
+                    if !seen.contains(item.id) {
+                        seen.insert(item.id)
+                        result.append(PurchasedItem(id: item.id, item: item, recipientName: member.name))
+                    }
+                }
+                
+                // Items from members' kids
+                for kid in member.kids {
+                    for item in kid.wishlistItems where item.isPurchased && item.purchasedBy == userId {
+                        if !seen.contains(item.id) {
+                            seen.insert(item.id)
+                            result.append(PurchasedItem(id: item.id, item: item, recipientName: kid.name))
+                        }
+                    }
+                }
+            }
+        }
+        
+        return result.sorted { ($0.item.purchasedAt ?? Date.distantPast) > ($1.item.purchasedAt ?? Date.distantPast) }
+    }
 }

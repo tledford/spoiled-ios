@@ -11,42 +11,40 @@ struct GroupsView: View {
 
     var body: some View {
         NavigationStack {
-            SwiftUI.Group {
-                if let groups = viewModel.groups, !groups.isEmpty {
-                    List {
-                        Section {
-                            ForEach(groups) { group in
-                                NavigationLink(destination: GroupDetailView(group: group)) {
-                                    GroupRow(group: group)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    if group.isAdmin {
-                                        Button(role: .destructive) {
-                                            groupToDelete = group
-                                            showDeleteAlert = true
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                        .disabled(viewModel.deletingGroupIds.contains(group.id))
+            ScrollView {
+                VStack(spacing: 16) {
+                    if let groups = viewModel.groups, !groups.isEmpty {
+                        ForEach(groups) { group in
+                            NavigationLink(destination: GroupDetailView(group: group)) {
+                                GroupRow(group: group)
+                                    .spoiledCard()
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                if group.isAdmin {
+                                    Button(role: .destructive) {
+                                        groupToDelete = group
+                                        showDeleteAlert = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
                                 }
                             }
                         }
-                    }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.appBackground.ignoresSafeArea())
-                } else {
-                    ScrollView {
+                    } else {
                         EmptyStateView(
                             systemImage: "person.3",
                             title: "No groups yet",
                             subtitle: "Create a group to share wishlists with family or friends"
                         )
+                        .padding(.top, 40)
                     }
-                    .background(Color.appBackground.ignoresSafeArea())
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("My Groups")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }
@@ -56,7 +54,7 @@ struct GroupsView: View {
                         showingAddGroupSheet = true
                     } label: {
                         Image(systemName: "plus")
-                            .fontWeight(.semibold)
+                            .navButton(color: .brandGold)
                     }
                 }
             }
@@ -119,8 +117,8 @@ struct GroupRow: View {
 
             GoldBadge(text: "\(group.members.count)")
         }
-        .padding(.vertical, 4)
-        .listRowBackground(Color.appSurface)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 }
 
@@ -134,86 +132,103 @@ struct GroupDetailView: View {
     @State private var sizesToShow: IdentSizes? = nil
 
     var body: some View {
-        List {
-            if group.members.isEmpty {
-                Section {
+        ScrollView {
+            VStack(spacing: 24) {
+                if group.members.isEmpty {
                     EmptyStateView(
                         systemImage: "person.2",
                         title: "No members yet",
                         subtitle: "Add members in the group settings"
                     )
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(.init())
-            } else {
+                    .padding(.top, 40)
+                } else {
                     ForEach(group.members) { member in
-                        // Personal wishlist section
-                        Section {
-                            if !member.wishlistItems.isEmpty {
-                                ForEach(member.wishlistItems) { item in
-                                    WishlistItemRow(
-                                        item: item,
-                                        viewModel: viewModel,
-                                        isInGroupView: true,
-                                        kidId: nil,
-                                        groupId: group.id,
-                                        groupMemberId: member.id,
-                                        useSheet: true
-                                    )
-                                }
-                            } else {
-                                Text("No personal wishlist items")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.vertical, 4)
-                                    .listRowBackground(Color.appSurface)
-                            }
-                        } header: {
+                        VStack(alignment: .leading, spacing: 12) {
                             MemberSectionHeader(
                                 name: member.name,
                                 birthdate: member.birthdate,
                                 sizes: member.sizes,
                                 onSizesTap: { sizesToShow = IdentSizes(member.sizes) }
                             )
-                        }
+                            .padding(.horizontal, 4)
 
-                        // Kids sections
-                        ForEach(member.kids) { kid in
-                            Section {
-                                if !kid.wishlistItems.isEmpty {
-                                    ForEach(kid.wishlistItems) { item in
+                            // Personal wishlist
+                            VStack(spacing: 0) {
+                                if !member.wishlistItems.isEmpty {
+                                    ForEach(Array(member.wishlistItems.enumerated()), id: \.element.id) { index, item in
                                         WishlistItemRow(
                                             item: item,
                                             viewModel: viewModel,
                                             isInGroupView: true,
-                                            kidId: kid.id,
+                                            kidId: nil,
                                             groupId: group.id,
                                             groupMemberId: member.id,
                                             useSheet: true
                                         )
+                                        
+                                        if index < member.wishlistItems.count - 1 {
+                                            Divider().padding(.leading, 16)
+                                        }
                                     }
                                 } else {
-                                    Text("No wishlist items")
+                                    Text("No personal wishlist items")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
-                                        .padding(.vertical, 4)
-                                        .listRowBackground(Color.appSurface)
+                                        .padding(16)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
-                            } header: {
-                                MemberSectionHeader(
-                                    name: kid.name,
-                                    birthdate: kid.birthdate,
-                                    sizes: kid.sizes,
-                                    isKid: true,
-                                    onSizesTap: { sizesToShow = IdentSizes(kid.sizes) }
-                                )
+                            }
+                            .spoiledCard()
+
+                            // Kids wishlists
+                            ForEach(member.kids) { kid in
+                                VStack(alignment: .leading, spacing: 12) {
+                                    MemberSectionHeader(
+                                        name: kid.name,
+                                        birthdate: kid.birthdate,
+                                        sizes: kid.sizes,
+                                        isKid: true,
+                                        onSizesTap: { sizesToShow = IdentSizes(kid.sizes) }
+                                    )
+                                    .padding(.horizontal, 4)
+                                    .padding(.top, 4)
+
+                                    VStack(spacing: 0) {
+                                        if !kid.wishlistItems.isEmpty {
+                                            ForEach(Array(kid.wishlistItems.enumerated()), id: \.element.id) { index, item in
+                                                WishlistItemRow(
+                                                    item: item,
+                                                    viewModel: viewModel,
+                                                    isInGroupView: true,
+                                                    kidId: kid.id,
+                                                    groupId: group.id,
+                                                    groupMemberId: member.id,
+                                                    useSheet: true
+                                                )
+                                                
+                                                if index < kid.wishlistItems.count - 1 {
+                                                    Divider().padding(.leading, 16)
+                                                }
+                                            }
+                                        } else {
+                                            Text("No wishlist items")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                                .padding(16)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                    }
+                                    .spoiledCard()
+                                }
                             }
                         }
                     }
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 32)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.large)
@@ -234,7 +249,8 @@ struct GroupDetailView: View {
                         }
                         .disabled(viewModel.deletingGroupIds.contains(group.id))
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "ellipsis")
+                            .navButton(color: .brandBlue)
                     }
                 }
             }
@@ -258,7 +274,12 @@ struct GroupDetailView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Done") { sizesToShow = nil }
+                            Button {
+                                sizesToShow = nil
+                            } label: {
+                                Text("Done")
+                                    .navButton(color: .brandBlue, isIcon: false)
+                            }
                         }
                     }
             }
@@ -277,7 +298,18 @@ private struct MemberSectionHeader: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            PersonAvatar(name: name, size: 32)
+            if isKid {
+                ZStack {
+                    Circle()
+                        .fill(Color.brandGold.opacity(0.15))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "figure.and.child.holdinghands")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.brandGold)
+                }
+            } else {
+                PersonAvatar(name: name, size: 32)
+            }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(name)
@@ -307,28 +339,49 @@ struct ListSizesView: View {
     let sizes: Sizes
 
     var body: some View {
-        List {
-            if !sizes.shirt.isEmpty     { sizeRow(label: "Shirt",       value: sizes.shirt) }
-            if !sizes.pants.isEmpty     { sizeRow(label: "Pants",       value: sizes.pants) }
-            if !sizes.shoes.isEmpty     { sizeRow(label: "Shoes",       value: sizes.shoes) }
-            if !sizes.sweatshirt.isEmpty { sizeRow(label: "Sweatshirt", value: sizes.sweatshirt) }
-            if !sizes.hat.isEmpty       { sizeRow(label: "Hat",         value: sizes.hat) }
-            if sizes.shirt.isEmpty && sizes.pants.isEmpty && sizes.shoes.isEmpty
-                && sizes.sweatshirt.isEmpty && sizes.hat.isEmpty {
-                Text("No sizes provided")
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
+        ScrollView {
+            VStack(spacing: 16) {
+                VStack(spacing: 0) {
+                    if !sizes.shirt.isEmpty     { sizeRow(label: "Shirt",       value: sizes.shirt) }
+                    if !sizes.shirt.isEmpty && (!sizes.pants.isEmpty || !sizes.shoes.isEmpty || !sizes.sweatshirt.isEmpty || !sizes.hat.isEmpty) { Divider().padding(.leading, 16) }
+                    
+                    if !sizes.pants.isEmpty     { sizeRow(label: "Pants",       value: sizes.pants) }
+                    if !sizes.pants.isEmpty && (!sizes.shoes.isEmpty || !sizes.sweatshirt.isEmpty || !sizes.hat.isEmpty) { Divider().padding(.leading, 16) }
+                    
+                    if !sizes.shoes.isEmpty     { sizeRow(label: "Shoes",       value: sizes.shoes) }
+                    if !sizes.shoes.isEmpty && (!sizes.sweatshirt.isEmpty || !sizes.hat.isEmpty) { Divider().padding(.leading, 16) }
+                    
+                    if !sizes.sweatshirt.isEmpty { sizeRow(label: "Sweatshirt", value: sizes.sweatshirt) }
+                    if !sizes.sweatshirt.isEmpty && !sizes.hat.isEmpty { Divider().padding(.leading, 16) }
+                    
+                    if !sizes.hat.isEmpty       { sizeRow(label: "Hat",         value: sizes.hat) }
+                    
+                    if sizes.shirt.isEmpty && sizes.pants.isEmpty && sizes.shoes.isEmpty
+                        && sizes.sweatshirt.isEmpty && sizes.hat.isEmpty {
+                        Text("No sizes provided")
+                            .foregroundStyle(.secondary)
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .spoiledCard()
             }
+            .padding(16)
         }
+        .background(Color.appBackground.ignoresSafeArea())
     }
 
     @ViewBuilder
     private func sizeRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
+                .font(.system(size: 15, weight: .medium))
             Spacer()
-            Text(value).foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 15))
+                .foregroundStyle(.secondary)
         }
+        .padding(16)
     }
 }
 
@@ -337,15 +390,6 @@ struct ListSizesView: View {
 private func hasNonEmptySizes(_ sizes: Sizes) -> Bool {
     !sizes.shirt.isEmpty || !sizes.pants.isEmpty || !sizes.shoes.isEmpty
         || !sizes.sweatshirt.isEmpty || !sizes.hat.isEmpty
-}
-
-private func birthdayLine(from birthdate: Date) -> String {
-    let days = daysUntilNextBirthday(from: birthdate)
-    let next = nextBirthdayDate(from: birthdate)
-    let md = DateFormatter()
-    md.setLocalizedDateFormatFromTemplate("MMMMd")
-    let dayWord = days == 1 ? "day" : "days"
-    return "Birthday: \(md.string(from: next)) (\(days) \(dayWord))"
 }
 
 private func nextBirthdayDate(from birthdate: Date, relativeTo now: Date = Date()) -> Date {

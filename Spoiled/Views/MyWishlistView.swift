@@ -9,13 +9,21 @@ struct MyWishlistView: View {
 
     var body: some View {
         NavigationStack {
-            SwiftUI.Group {
+            VStack(spacing: 0) {
                 if viewModel.kids?.isEmpty == false {
                     segmentedContent
                 } else {
-                    MyItemsListView(viewModel: viewModel)
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            MyItemsListView(viewModel: viewModel)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .padding(.bottom, 32)
+                    }
                 }
             }
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("My Wishlist")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -24,7 +32,7 @@ struct MyWishlistView: View {
                         showingAddItemSheet = true
                     } label: {
                         Image(systemName: "plus")
-                            .fontWeight(.semibold)
+                            .navButton(color: .brandGold)
                     }
                 }
             }
@@ -44,12 +52,18 @@ struct MyWishlistView: View {
             )
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            .padding(.bottom, 4)
+            .padding(.bottom, 12)
 
-            if selectedTab == "My Items" {
-                MyItemsListView(viewModel: viewModel)
-            } else {
-                KidsItemsListView(viewModel: viewModel)
+            ScrollView {
+                VStack(spacing: 16) {
+                    if selectedTab == "My Items" {
+                        MyItemsListView(viewModel: viewModel)
+                    } else {
+                        KidsItemsListView(viewModel: viewModel)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 32)
             }
         }
     }
@@ -86,7 +100,7 @@ struct GlassSegmentedPicker: View {
             }
         }
         .padding(4)
-        .background(.ultraThinMaterial, in: Capsule())
+        .background(Color.appSurface, in: Capsule())
     }
 }
 
@@ -98,37 +112,34 @@ struct MyItemsListView: View {
 
     var body: some View {
         if let items = viewModel.wishlistItems, !items.isEmpty {
-            List {
-                Section {
-                    ForEach(items) { item in
-                        WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: nil, groupId: nil, groupMemberId: nil)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    Task {
-                                        let ok = await viewModel.deleteWishlistItem(item, kidId: nil)
-                                        if ok { toastCenter.success("Item deleted") }
-                                        else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: nil, groupId: nil, groupMemberId: nil)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                Task {
+                                    let ok = await viewModel.deleteWishlistItem(item, kidId: nil)
+                                    if ok { toastCenter.success("Item deleted") }
+                                    else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
                                 }
-                                .disabled(viewModel.deletingWishlistItemIds.contains(item.id))
+                            } label: {
+                                Label("Delete", systemImage: "trash")
                             }
+                        }
+                    
+                    if index < items.count - 1 {
+                        Divider().padding(.leading, 16)
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .background(Color.appBackground.ignoresSafeArea())
+            .spoiledCard()
         } else {
-            ScrollView {
-                EmptyStateView(
-                    systemImage: "gift",
-                    title: "Your wishlist is empty",
-                    subtitle: "Tap + to add your first wish"
-                )
-            }
-            .background(Color.appBackground.ignoresSafeArea())
+            EmptyStateView(
+                systemImage: "gift",
+                title: "Your wishlist is empty",
+                subtitle: "Tap + to add your first wish"
+            )
+            .padding(.top, 40)
         }
     }
 }
@@ -141,51 +152,54 @@ struct KidsItemsListView: View {
 
     var body: some View {
         if let kids = viewModel.kids, !kids.isEmpty {
-            List {
+            VStack(spacing: 24) {
                 ForEach(kids) { kid in
-                    Section {
-                        ForEach(kid.wishlistItems) { item in
-                            WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: kid.id, groupId: nil, groupMemberId: nil)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        Task {
-                                            let ok = await viewModel.deleteWishlistItem(item, kidId: kid.id)
-                                            if ok { toastCenter.success("Item deleted") }
-                                            else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(kid.name.uppercased())
+                            .font(.system(size: 12, weight: .bold))
+                            .tracking(0.8)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 4)
+
+                        VStack(spacing: 0) {
+                            if kid.wishlistItems.isEmpty {
+                                Text("No items yet")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(16)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                ForEach(Array(kid.wishlistItems.enumerated()), id: \.element.id) { index, item in
+                                    WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: kid.id, groupId: nil, groupMemberId: nil)
+                                        .contextMenu {
+                                            Button(role: .destructive) {
+                                                Task {
+                                                    let ok = await viewModel.deleteWishlistItem(item, kidId: kid.id)
+                                                    if ok { toastCenter.success("Item deleted") }
+                                                    else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
+                                                }
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
                                         }
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    
+                                    if index < kid.wishlistItems.count - 1 {
+                                        Divider().padding(.leading, 16)
                                     }
-                                    .disabled(viewModel.deletingWishlistItemIds.contains(item.id))
                                 }
+                            }
                         }
-                        if kid.wishlistItems.isEmpty {
-                            Text("No items yet")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .padding(.vertical, 4)
-                                .listRowBackground(Color.appSurface)
-                        }
-                    } header: {
-                        Text(kid.name)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.brandGold)
-                            .textCase(nil)
+                        .spoiledCard()
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .background(Color.appBackground.ignoresSafeArea())
         } else {
-            ScrollView {
-                EmptyStateView(
-                    systemImage: "figure.and.child.holdinghands",
-                    title: "No kids added",
-                    subtitle: "Add kids in Settings to manage their wishlists"
-                )
-            }
-            .background(Color.appBackground.ignoresSafeArea())
+            EmptyStateView(
+                systemImage: "figure.and.child.holdinghands",
+                title: "No kids added",
+                subtitle: "Add kids in Settings to manage their wishlists"
+            )
+            .padding(.top, 40)
         }
     }
 }
@@ -221,8 +235,8 @@ struct WishlistItemRow: View {
 
     var body: some View {
         rowView
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowBackground(Color.appSurface)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
     }
 
     @ViewBuilder
@@ -257,6 +271,7 @@ struct WishlistItemRow: View {
             )) {
                 rowContent
             }
+            .buttonStyle(.plain)
         }
     }
 

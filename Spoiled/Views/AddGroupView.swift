@@ -9,41 +9,36 @@ struct AddGroupView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Group Name", text: $name)
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        AppSectionHeader(icon: "person.2.fill", title: "Group Details")
+                        VStack(spacing: 0) {
+                            TextField("Group Name", text: $name)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                        }
+                        .spoiledCard()
+                    }
                 }
-                
-//                Section("Add Members") {
-//                    ForEach(viewModel.currentUser?.groups.groupMembers) { member in
-//                        if member.id != viewModel.currentUser?.id {
-//                            Toggle(member.name, isOn: Binding(
-//                                get: { selectedMemberIds.contains(member.id) },
-//                                set: { isSelected in
-//                                    if isSelected {
-//                                        selectedMemberIds.insert(member.id)
-//                                    } else {
-//                                        selectedMemberIds.remove(member.id)
-//                                    }
-//                                }
-//                            ))
-//                        }
-//                    }
-//                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
-            .scrollContentBackground(.hidden)
             .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("New Group")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+                    Button { dismiss() } label: {
+                        Text("Cancel")
+                            .navButton(color: .brandBlue, isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
-                        createGroup()
+                    Button { createGroup() } label: {
+                        Text("Create")
+                            .navButton(color: .brandGold, isIcon: false)
                     }
                     .disabled(name.isEmpty)
                 }

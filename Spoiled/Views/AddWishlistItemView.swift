@@ -16,103 +16,158 @@ struct AddWishlistItemView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Item Details") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Item Name")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("What do you want?", text: $name)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Link")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("https://", text: $linkString)
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .textContentType(.URL)
-                            .autocorrectionDisabled(true)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Description")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("Optional notes…", text: $description, axis: .vertical)
-                            .lineLimit(3...6)
-                    }
-                }
-
-                if isForKid, let kids = viewModel.kids {
-                    if kids.count == 1 {
-                        let kid = kids[0]
-                        Section {
-                            HStack(spacing: 10) {
-                                PersonAvatar(name: kid.name, size: 28)
-                                Text("For: \(kid.name)")
-                                    .font(.system(size: 15, weight: .medium))
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Item Details
+                    VStack(alignment: .leading, spacing: 8) {
+                        AppSectionHeader(icon: "info.circle.fill", title: "Item Details")
+                        VStack(spacing: 0) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Item Name")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("What do you want?", text: $name)
                             }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+
+                            Divider().padding(.leading, 16)
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Link")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("https://", text: $linkString)
+                                    .keyboardType(.URL)
+                                    .textInputAutocapitalization(.never)
+                                    .textContentType(.URL)
+                                    .autocorrectionDisabled(true)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+
+                            Divider().padding(.leading, 16)
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Description")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("Optional notes…", text: $description, axis: .vertical)
+                                    .lineLimit(3...6)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
                         }
-                        .onAppear { selectedKid = kid }
-                    } else {
-                        Section("Select Kid") {
-                            Picker("For:", selection: $selectedKid) {
-                                ForEach(kids) { kid in
-                                    Text(kid.name).tag(kid as Kid?)
+                        .spoiledCard()
+                    }
+
+                    if isForKid, let kids = viewModel.kids {
+                        if kids.count == 1 {
+                            let kid = kids[0]
+                            VStack(spacing: 0) {
+                                HStack(spacing: 10) {
+                                    PersonAvatar(name: kid.name, size: 28)
+                                    Text("For: \(kid.name)")
+                                        .font(.system(size: 15, weight: .medium))
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
                             }
-                            .pickerStyle(.menu)
+                            .spoiledCard()
+                            .onAppear { selectedKid = kid }
+                        } else {
+                            VStack(alignment: .leading, spacing: 8) {
+                                AppSectionHeader(icon: "person.fill", title: "Select Kid")
+                                VStack(spacing: 0) {
+                                    HStack {
+                                        Text("For:")
+                                            .font(.system(size: 15, weight: .medium))
+                                        Spacer()
+                                        Picker("", selection: $selectedKid) {
+                                            Text("Select...").tag(nil as Kid?)
+                                            ForEach(kids) { kid in
+                                                Text(kid.name).tag(kid as Kid?)
+                                            }
+                                        }
+                                        .pickerStyle(.menu)
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                }
+                                .spoiledCard()
+                            }
+                        }
+                    }
+
+                    // Share with Groups
+                    VStack(alignment: .leading, spacing: 8) {
+                        AppSectionHeader(icon: "person.3.fill", title: "Share with Groups")
+                        VStack(spacing: 0) {
+                            Toggle(isOn: Binding(
+                                get: { selectedGroupIds.count == (viewModel.groups ?? []).count && !(viewModel.groups ?? []).isEmpty },
+                                set: { isSelected in
+                                    if isSelected { selectedGroupIds = Set((viewModel.groups ?? []).map { $0.id }) }
+                                    else { selectedGroupIds.removeAll() }
+                                }
+                            )) {
+                                Label("All Groups", systemImage: "person.3.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                            }
+                            .tint(.brandGold)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+
+                            ForEach(viewModel.groups ?? []) { group in
+                                Divider().padding(.leading, 16)
+                                Toggle(isOn: Binding(
+                                    get: { selectedGroupIds.contains(group.id) },
+                                    set: { isSelected in
+                                        if isSelected { selectedGroupIds.insert(group.id) }
+                                        else { selectedGroupIds.remove(group.id) }
+                                    }
+                                )) {
+                                    Text(group.name)
+                                }
+                                .tint(.brandGold)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                            }
+                        }
+                        .spoiledCard()
+
+                        if selectedGroupIds.isEmpty {
+                            Label("Not shared — only visible to you", systemImage: "lock.fill")
+                                .font(.caption)
+                                .foregroundStyle(Color.brandGold.opacity(0.8))
+                                .padding(.horizontal, 4)
                         }
                     }
                 }
-
-                Section {
-                    Toggle(isOn: Binding(
-                        get: { selectedGroupIds.count == (viewModel.groups ?? []).count && !(viewModel.groups ?? []).isEmpty },
-                        set: { isSelected in
-                            if isSelected { selectedGroupIds = Set((viewModel.groups ?? []).map { $0.id }) }
-                            else { selectedGroupIds.removeAll() }
-                        }
-                    )) {
-                        Label("All Groups", systemImage: "person.3.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                    }
-                    .tint(.brandGold)
-
-                    ForEach(viewModel.groups ?? []) { group in
-                        Toggle(isOn: Binding(
-                            get: { selectedGroupIds.contains(group.id) },
-                            set: { isSelected in
-                                if isSelected { selectedGroupIds.insert(group.id) }
-                                else { selectedGroupIds.remove(group.id) }
-                            }
-                        )) {
-                            Text(group.name)
-                        }
-                        .tint(.brandGold)
-                    }
-                } header: {
-                    Text("Share with Groups")
-                } footer: {
-                    if selectedGroupIds.isEmpty {
-                        Label("Not shared — only visible to you", systemImage: "lock.fill")
-                            .font(.caption)
-                            .foregroundStyle(Color.brandGold.opacity(0.8))
-                    }
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
-            .scrollContentBackground(.hidden)
             .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Add Item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Cancel")
+                            .navButton(color: .brandBlue, isIcon: false)
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { Task { await addItem() } }
-                        .fontWeight(.semibold)
-                        .disabled(name.isEmpty || (isForKid && selectedKid == nil) || viewModel.isSavingWishlistItem)
+                    Button {
+                        Task { await addItem() }
+                    } label: {
+                        Text("Add")
+                            .navButton(color: .brandGold, isIcon: false)
+                    }
+                    .disabled(name.isEmpty || (isForKid && selectedKid == nil) || viewModel.isSavingWishlistItem)
                 }
             }
         }

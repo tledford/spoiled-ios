@@ -12,29 +12,41 @@ struct AddGiftIdeaView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section { 
-                    GiftIdeaFormFields(personName: $personName,
-                                       giftName: $giftName,
-                                       urlString: $urlString,
-                                       notes: $notes,
-                                       isPurchased: $isPurchased,
-                                       showPurchasedToggle: true)
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        AppSectionHeader(icon: "lightbulb.fill", title: "Gift Idea Details")
+                        GiftIdeaFormFields(personName: $personName,
+                                           giftName: $giftName,
+                                           urlString: $urlString,
+                                           notes: $notes,
+                                           isPurchased: $isPurchased,
+                                           showPurchasedToggle: true)
+                            .spoiledCard()
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
-            .scrollContentBackground(.hidden)
             .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Add Gift Idea")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Text("Cancel")
+                            .navButton(color: .brandBlue, isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button {
                         Task { await addGiftIdea() }
+                    } label: {
+                        Text("Add")
+                            .navButton(color: .brandGold, isIcon: false)
                     }
                     .disabled(personName.isEmpty || giftName.isEmpty || viewModel.isSavingGiftIdea)
                 }

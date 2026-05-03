@@ -48,10 +48,14 @@ extension Color {
     /// Adaptive surface — slightly elevated in dark, secondarySystemGroupedBackground in light.
     static let appSurface = Color(UIColor { tc in
         tc.userInterfaceStyle == .dark
-            ? UIColor(red: 0.10, green: 0.11, blue: 0.17, alpha: 1)
+            ? UIColor(red: 0.12, green: 0.14, blue: 0.22, alpha: 1)
             : UIColor.secondarySystemGroupedBackground
     })
+    /// A more vibrant navy for button backgrounds to ensure they don't look gray.
+    static let navButtonBackground = Color(red: 0.15, green: 0.18, blue: 0.30)
+    
     static let brandGold  = Color(red: 0.91, green: 0.67, blue: 0.24)  // #E8AA3C warm amber
+    static let brandBlue  = Color(red: 0.40, green: 0.70, blue: 1.0)   // #66B2FF light blue
     static let brandRose  = Color(red: 0.94, green: 0.42, blue: 0.50)  // #F06B80 rose pink
     static let goldMuted  = Color(red: 0.91, green: 0.67, blue: 0.24).opacity(0.18)
     static let roseMuted  = Color(red: 0.94, green: 0.42, blue: 0.50).opacity(0.18)

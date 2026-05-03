@@ -24,28 +24,49 @@ struct GiftIdeaFormFields: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(spacing: 0) {
             field(label: "Person's Name") {
                 TextField("", text: $personName)
                     .textInputAutocapitalization(.words)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+
+            Divider().padding(.leading, 16)
+
             field(label: "Gift Name") {
                 TextField("", text: $giftName)
                     .textInputAutocapitalization(.words)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+
+            Divider().padding(.leading, 16)
+
             field(label: "URL") {
                 TextField("https://", text: $urlString)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+
+            Divider().padding(.leading, 16)
+
             field(label: "Notes") {
                 TextField("", text: $notes, axis: .vertical)
                     .lineLimit(3...6)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+
             if showPurchasedToggle {
+                Divider().padding(.leading, 16)
                 Toggle("Purchased", isOn: $isPurchased)
                     .tint(.brandGold)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
             }
         }
     }

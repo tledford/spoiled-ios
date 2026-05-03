@@ -28,11 +28,13 @@ struct SettingsView: View {
 
                             Spacer()
 
-                            Button("Edit") {
+                            Button {
                                 showingEditProfile = true
+                            } label: {
+                                Text("Edit")
+                                    .navButton(color: .brandBlue, isIcon: false)
                             }
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.brandGold)
+                            .buttonStyle(.plain)
                         }
                         .padding(.vertical, 6)
                         .listRowBackground(Color.appSurface)

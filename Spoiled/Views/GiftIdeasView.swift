@@ -109,7 +109,7 @@ struct GiftIdeasView: View {
                         showingAddGiftIdeaSheet = true
                     } label: {
                         Image(systemName: "plus")
-                            .fontWeight(.semibold)
+                            .navButton(color: .brandGold)
                     }
                 }
             }

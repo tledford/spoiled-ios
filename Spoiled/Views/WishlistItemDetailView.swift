@@ -229,7 +229,7 @@ struct WishlistItemDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(UIColor.secondarySystemGroupedBackground))
+                    .fill(Color.appSurface)
             )
     }
 }
