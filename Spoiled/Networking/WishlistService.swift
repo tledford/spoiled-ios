@@ -6,7 +6,6 @@ private struct CreateWishlistItemPayload: Encodable {
     let id: UUID?
     let name: String
     let description: String?
-    let price: Double?
     let link: String?
     let assignedGroupIds: [UUID]?
 }
@@ -14,7 +13,6 @@ private struct CreateWishlistItemPayload: Encodable {
 private struct UpdateWishlistItemPayload: Encodable {
     let name: String?
     let description: String?
-    let price: Double?
     let link: String?
     let isPurchased: Bool?
     let assignedGroupIds: [UUID]?
@@ -34,7 +32,6 @@ private struct CreateUserItemRequest: APIRequest {
             id: item.id, // allow server to use our id or generate
             name: item.name,
             description: item.description.isEmpty ? nil : item.description,
-            price: item.price,
             link: item.link?.absoluteString,
             assignedGroupIds: item.assignedGroupIds
         )
@@ -56,7 +53,6 @@ private struct CreateKidItemRequest: APIRequest {
             id: item.id,
             name: item.name,
             description: item.description.isEmpty ? nil : item.description,
-            price: item.price,
             link: item.link?.absoluteString,
             assignedGroupIds: item.assignedGroupIds
         )
@@ -77,7 +73,6 @@ private struct UpdateUserItemRequest: APIRequest {
         let payload = UpdateWishlistItemPayload(
             name: item.name,
             description: item.description,
-            price: item.price,
             link: item.link?.absoluteString,
             isPurchased: item.isPurchased,
             assignedGroupIds: item.assignedGroupIds
@@ -99,7 +94,6 @@ private struct UpdateKidItemRequest: APIRequest {
         let payload = UpdateWishlistItemPayload(
             name: item.name,
             description: item.description,
-            price: item.price,
             link: item.link?.absoluteString,
             isPurchased: item.isPurchased,
             assignedGroupIds: item.assignedGroupIds

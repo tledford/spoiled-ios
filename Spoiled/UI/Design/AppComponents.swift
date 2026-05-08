@@ -145,25 +145,24 @@ struct AppSectionHeader: View {
 }
 
 // MARK: - NavButton
-/// Consistent style for navigation bar buttons with an appSurface background.
+/// Consistent style for navigation bar buttons.
+/// Use `isIcon: true` (default) for icon-only buttons, `isIcon: false` for text/mixed buttons.
+/// The system's Liquid Glass capsule provides the background automatically on iOS 26+.
 struct NavButtonModifier: ViewModifier {
-    var color: Color = .brandBlue
     var isIcon: Bool = true
 
     func body(content: Content) -> some View {
         content
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(color)
+            .foregroundStyle(.primary)
             .frame(width: isIcon ? 36 : nil, height: 36)
             .padding(.horizontal, isIcon ? 0 : 14)
-            .background(Color.navButtonBackground)
-            .clipShape(Capsule())
     }
 }
 
 extension View {
-    func navButton(color: Color = .brandBlue, isIcon: Bool = true) -> some View {
-        modifier(NavButtonModifier(color: color, isIcon: isIcon))
+    func navButton(isIcon: Bool = true) -> some View {
+        modifier(NavButtonModifier(isIcon: isIcon))
     }
 }
 

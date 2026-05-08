@@ -1,0 +1,5 @@
+{
+  "context": {
+    "includeDirectories": ["../spoiled-api-cf"]
+  }
+}

@@ -9,6 +9,7 @@ struct GiftIdeasView: View {
     @State private var showDeleteAlert = false
     @State private var giftIdeaToDelete: GiftIdea?
     @State private var hidePurchased: Bool
+    @State private var showDeletePurchasedAlert = false
 
     init(startHidingPurchased: Bool = false) {
         _hidePurchased = State(initialValue: startHidingPurchased)
@@ -85,31 +86,30 @@ struct GiftIdeasView: View {
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        withAnimation(.spring(response: 0.3)) { hidePurchased.toggle() }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: hidePurchased ? "eye.slash.fill" : "eye.fill")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(hidePurchased ? "Show all" : "Hide bought")
-                                .font(.system(size: 13, weight: .semibold))
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Menu {
+                        Button {
+                            withAnimation(.spring(response: 0.3)) { hidePurchased.toggle() }
+                        } label: {
+                            Label(
+                                hidePurchased ? "Show Purchased Items" : "Hide Purchased Items",
+                                systemImage: hidePurchased ? "eye" : "eye.slash"
+                            )
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(hidePurchased ? Color.brandGold.opacity(0.2) : Color.secondary.opacity(0.12))
-                        .foregroundStyle(hidePurchased ? Color.brandGold : Color.secondary)
-                        .clipShape(Capsule())
+                        Button(role: .destructive) {
+                            showDeletePurchasedAlert = true
+                        } label: {
+                            Label("Delete Purchased Items", systemImage: "trash")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .navButton()
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(hidePurchased ? "Show purchased" : "Hide purchased")
-                }
-                ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingAddGiftIdeaSheet = true
                     } label: {
                         Image(systemName: "plus")
-                            .navButton(color: .brandGold)
+                            .navButton()
                     }
                 }
             }
@@ -135,6 +135,22 @@ struct GiftIdeasView: View {
                 }
             } message: {
                 Text("Are you sure you want to delete this gift idea? This action cannot be undone.")
+            }
+            .alert("Delete Purchased Items?", isPresented: $showDeletePurchasedAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task {
+                        let result = await viewModel.deletePurchasedGiftIdeas()
+                        if result.failed == 0 {
+                            toastCenter.success("\(result.deleted) gift idea\(result.deleted == 1 ? "" : "s") deleted")
+                        } else {
+                            toastCenter.error("Deleted \(result.deleted), failed to delete \(result.failed)")
+                        }
+                    }
+                }
+            } message: {
+                let count = (viewModel.giftIdeas ?? []).filter { $0.isPurchased }.count
+                Text("This will permanently delete \(count) purchased gift idea\(count == 1 ? "" : "s"). They will no longer appear on the Purchased Gifts summary screen. This cannot be undone.")
             }
         }
         .trackScreen("gift_ideas")

@@ -9,19 +9,27 @@ struct MyWishlistView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                if viewModel.kids?.isEmpty == false {
-                    segmentedContent
-                } else {
-                    ScrollView {
-                        VStack(spacing: 16) {
+            ScrollView {
+                VStack(spacing: 16) {
+                    if viewModel.kids?.isEmpty == false {
+                        GlassSegmentedPicker(
+                            options: ["My Items", "Kids Items"],
+                            selection: $selectedTab
+                        )
+                        .padding(.horizontal, 0)
+
+                        if selectedTab == "My Items" {
                             MyItemsListView(viewModel: viewModel)
+                        } else {
+                            KidsItemsListView(viewModel: viewModel)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                        .padding(.bottom, 32)
+                    } else {
+                        MyItemsListView(viewModel: viewModel)
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
             .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("My Wishlist")
@@ -32,7 +40,7 @@ struct MyWishlistView: View {
                         showingAddItemSheet = true
                     } label: {
                         Image(systemName: "plus")
-                            .navButton(color: .brandGold)
+                            .navButton()
                     }
                 }
             }
@@ -42,30 +50,6 @@ struct MyWishlistView: View {
             .refreshable { await viewModel.load() }
         }
         .trackScreen("my_wishlist")
-    }
-
-    private var segmentedContent: some View {
-        VStack(spacing: 0) {
-            GlassSegmentedPicker(
-                options: ["My Items", "Kids Items"],
-                selection: $selectedTab
-            )
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 12)
-
-            ScrollView {
-                VStack(spacing: 16) {
-                    if selectedTab == "My Items" {
-                        MyItemsListView(viewModel: viewModel)
-                    } else {
-                        KidsItemsListView(viewModel: viewModel)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 32)
-            }
-        }
     }
 }
 
@@ -270,6 +254,8 @@ struct WishlistItemRow: View {
                 groupMemberId: groupMemberId
             )) {
                 rowContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -283,15 +269,8 @@ struct WishlistItemRow: View {
                     .foregroundStyle(isInGroupView && item.isPurchased ? .secondary : .primary)
                     .strikethrough(isInGroupView && item.isPurchased, color: .secondary)
 
-                HStack(spacing: 6) {
-                    if let price = item.price {
-                        Text("$\(price, specifier: "%.2f")")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                    if !isInGroupView && item.assignedGroupIds.isEmpty {
-                        PrivateBadge()
-                    }
+                if !isInGroupView && item.assignedGroupIds.isEmpty {
+                    PrivateBadge()
                 }
             }
             Spacer()

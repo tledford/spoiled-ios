@@ -32,7 +32,7 @@ struct SettingsView: View {
                                 showingEditProfile = true
                             } label: {
                                 Text("Edit")
-                                    .navButton(color: .brandBlue, isIcon: false)
+                                    .navButton(isIcon: false)
                             }
                             .buttonStyle(.plain)
                         }

@@ -38,7 +38,7 @@ struct AddGiftIdeaView: View {
                         dismiss()
                     } label: {
                         Text("Cancel")
-                            .navButton(color: .brandBlue, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -46,7 +46,7 @@ struct AddGiftIdeaView: View {
                         Task { await addGiftIdea() }
                     } label: {
                         Text("Add")
-                            .navButton(color: .brandGold, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                     .disabled(personName.isEmpty || giftName.isEmpty || viewModel.isSavingGiftIdea)
                 }

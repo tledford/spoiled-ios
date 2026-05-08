@@ -54,7 +54,7 @@ struct GroupsView: View {
                         showingAddGroupSheet = true
                     } label: {
                         Image(systemName: "plus")
-                            .navButton(color: .brandGold)
+                            .navButton()
                     }
                 }
             }
@@ -130,6 +130,12 @@ struct GroupDetailView: View {
     @EnvironmentObject private var toastCenter: ToastCenter
     @State private var showDeleteAlert = false
     @State private var sizesToShow: IdentSizes? = nil
+    @State private var hidePurchased: Bool = false
+
+    private func filteredSorted(_ items: [WishlistItem]) -> [WishlistItem] {
+        let visible = hidePurchased ? items.filter { !$0.isPurchased } : items
+        return visible.sorted { !$0.isPurchased && $1.isPurchased }
+    }
 
     var body: some View {
         ScrollView {
@@ -153,9 +159,16 @@ struct GroupDetailView: View {
                             .padding(.horizontal, 4)
 
                             // Personal wishlist
+                            let memberItems = filteredSorted(member.wishlistItems)
                             VStack(spacing: 0) {
-                                if !member.wishlistItems.isEmpty {
-                                    ForEach(Array(member.wishlistItems.enumerated()), id: \.element.id) { index, item in
+                                if memberItems.isEmpty {
+                                    Text(hidePurchased && !member.wishlistItems.isEmpty ? "No unpurchased items" : "No personal wishlist items")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .padding(16)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    ForEach(Array(memberItems.enumerated()), id: \.element.id) { index, item in
                                         WishlistItemRow(
                                             item: item,
                                             viewModel: viewModel,
@@ -165,17 +178,11 @@ struct GroupDetailView: View {
                                             groupMemberId: member.id,
                                             useSheet: true
                                         )
-                                        
-                                        if index < member.wishlistItems.count - 1 {
+
+                                        if index < memberItems.count - 1 {
                                             Divider().padding(.leading, 16)
                                         }
                                     }
-                                } else {
-                                    Text("No personal wishlist items")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                        .padding(16)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                             }
                             .spoiledCard()
@@ -193,9 +200,16 @@ struct GroupDetailView: View {
                                     .padding(.horizontal, 4)
                                     .padding(.top, 4)
 
+                                    let kidItems = filteredSorted(kid.wishlistItems)
                                     VStack(spacing: 0) {
-                                        if !kid.wishlistItems.isEmpty {
-                                            ForEach(Array(kid.wishlistItems.enumerated()), id: \.element.id) { index, item in
+                                        if kidItems.isEmpty {
+                                            Text(hidePurchased && !kid.wishlistItems.isEmpty ? "No unpurchased items" : "No wishlist items")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                                .padding(16)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        } else {
+                                            ForEach(Array(kidItems.enumerated()), id: \.element.id) { index, item in
                                                 WishlistItemRow(
                                                     item: item,
                                                     viewModel: viewModel,
@@ -205,17 +219,11 @@ struct GroupDetailView: View {
                                                     groupMemberId: member.id,
                                                     useSheet: true
                                                 )
-                                                
-                                                if index < kid.wishlistItems.count - 1 {
+
+                                                if index < kidItems.count - 1 {
                                                     Divider().padding(.leading, 16)
                                                 }
                                             }
-                                        } else {
-                                            Text("No wishlist items")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
-                                                .padding(16)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
                                         }
                                     }
                                     .spoiledCard()
@@ -234,9 +242,18 @@ struct GroupDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .refreshable { await viewModel.refreshAll() }
         .toolbar {
-            if group.isAdmin {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button {
+                        withAnimation(.spring(response: 0.3)) { hidePurchased.toggle() }
+                    } label: {
+                        Label(
+                            hidePurchased ? "Show Purchased Items" : "Hide Purchased Items",
+                            systemImage: hidePurchased ? "eye" : "eye.slash"
+                        )
+                    }
+
+                    if group.isAdmin {
                         NavigationLink {
                             EditGroupView(group: group)
                         } label: {
@@ -248,10 +265,10 @@ struct GroupDetailView: View {
                             Label("Delete Group", systemImage: "trash")
                         }
                         .disabled(viewModel.deletingGroupIds.contains(group.id))
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .navButton(color: .brandBlue)
                     }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .navButton()
                 }
             }
         }
@@ -278,7 +295,7 @@ struct GroupDetailView: View {
                                 sizesToShow = nil
                             } label: {
                                 Text("Done")
-                                    .navButton(color: .brandBlue, isIcon: false)
+                                    .navButton(isIcon: false)
                             }
                         }
                     }

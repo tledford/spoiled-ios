@@ -46,7 +46,7 @@ struct ToastView: View {
         .background(toastBackground)
         .foregroundStyle(.white)
         .clipShape(Capsule())
-        .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 4)
     }
 
     private var iconName: String {
@@ -57,20 +57,11 @@ struct ToastView: View {
         }
     }
 
-    @ViewBuilder private var toastBackground: some View {
-        if #available(iOS 26, *) {
-            Capsule()
-                .glassEffect(.regular.tint(tintColor).interactive(), in: Capsule())
-        } else {
-            tintColor.opacity(0.92)
-        }
-    }
-
-    private var tintColor: Color {
+    private var toastBackground: Color {
         switch toast.style {
-        case .success: return .green
-        case .error:   return .red
-        case .info:    return Color(red: 0.20, green: 0.45, blue: 0.90)
+        case .success: return Color(red: 0.15, green: 0.60, blue: 0.25)
+        case .error:   return Color(red: 0.82, green: 0.18, blue: 0.18)
+        case .info:    return Color(red: 0.16, green: 0.38, blue: 0.78)
         }
     }
 }

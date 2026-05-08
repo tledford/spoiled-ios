@@ -47,24 +47,33 @@ struct SplashView: View {
                     [0, 1], [0.5, 1], [1, 1]
                 ],
                 colors: [
-                    Color(red: 0.06, green: 0.05, blue: 0.14),
-                    Color(red: 0.10, green: 0.07, blue: 0.22),
-                    Color(red: 0.06, green: 0.05, blue: 0.14),
-                    Color(red: 0.12, green: 0.08, blue: 0.24),
-                    Color(red: 0.18, green: 0.10, blue: 0.32),
-                    Color(red: 0.10, green: 0.06, blue: 0.20),
-                    Color(red: 0.05, green: 0.05, blue: 0.10),
-                    Color(red: 0.08, green: 0.06, blue: 0.16),
-                    Color(red: 0.05, green: 0.04, blue: 0.10),
+                    // corners — darkest navy
+                    Color(red: 0.04, green: 0.045, blue: 0.09),
+                    // top edge midpoint
+                    Color(red: 0.07, green: 0.08, blue: 0.13),
+                    // corner
+                    Color(red: 0.04, green: 0.045, blue: 0.09),
+                    // left edge midpoint
+                    Color(red: 0.07, green: 0.08, blue: 0.13),
+                    // center — appSurface
+                    Color(red: 0.12, green: 0.14, blue: 0.22),
+                    // right edge midpoint
+                    Color(red: 0.07, green: 0.08, blue: 0.13),
+                    // corner
+                    Color(red: 0.04, green: 0.045, blue: 0.09),
+                    // bottom edge midpoint
+                    Color(red: 0.07, green: 0.08, blue: 0.13),
+                    // corner
+                    Color(red: 0.04, green: 0.045, blue: 0.09),
                 ]
             )
             .ignoresSafeArea()
         } else {
             LinearGradient(
                 colors: [
-                    Color(red: 0.06, green: 0.05, blue: 0.14),
-                    Color(red: 0.14, green: 0.09, blue: 0.26),
-                    Color(red: 0.05, green: 0.05, blue: 0.10),
+                    Color(red: 0.051, green: 0.055, blue: 0.102),
+                    Color(red: 0.08, green: 0.09, blue: 0.16),
+                    Color(red: 0.04, green: 0.045, blue: 0.09),
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -78,10 +87,10 @@ struct SplashView: View {
         VStack(spacing: 20) {
             ZStack {
                 Circle()
-                    .fill(Color.brandRose.opacity(0.12))
+                    .fill(Color.brandGold.opacity(0.12))
                     .frame(width: 140, height: 140)
                 Circle()
-                    .fill(Color.brandRose.opacity(0.07))
+                    .fill(Color.brandGold.opacity(0.07))
                     .frame(width: 170, height: 170)
                 Image(systemName: "gift.fill")
                     .resizable()
@@ -89,7 +98,7 @@ struct SplashView: View {
                     .frame(width: 68, height: 68)
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.brandRose, Color(red: 0.94, green: 0.55, blue: 0.35)],
+                            colors: [.brandGold, Color(red: 0.91, green: 0.55, blue: 0.10)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -114,7 +123,7 @@ struct SplashView: View {
                     )
                     .tracking(-1)
 
-                Text("Wishlists for people who love giving")
+                Text("Group wishlists for stress-free gift giving")
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(Color.white.opacity(0.55))
                     .multilineTextAlignment(.center)

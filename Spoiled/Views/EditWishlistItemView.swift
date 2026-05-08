@@ -7,7 +7,6 @@ struct EditWishlistItemView: View {
 
     @State private var name: String
     @State private var description: String
-    @State private var price: Double?
     @State private var linkString: String
     @State private var selectedGroupIds: Set<UUID>
 
@@ -19,7 +18,6 @@ struct EditWishlistItemView: View {
         self.item = item
         _name = State(initialValue: item.name)
         _description = State(initialValue: item.description)
-        _price = State(initialValue: item.price)
         _linkString = State(initialValue: item.link?.absoluteString ?? "")
         _selectedGroupIds = State(initialValue: Set(item.assignedGroupIds))
     }
@@ -128,7 +126,7 @@ struct EditWishlistItemView: View {
                         dismiss()
                     } label: {
                         Text("Cancel")
-                            .navButton(color: .brandBlue, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -136,7 +134,7 @@ struct EditWishlistItemView: View {
                         Task { await saveChanges() }
                     } label: {
                         Text("Save")
-                            .navButton(color: .brandGold, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                     .disabled(name.isEmpty || viewModel.isSavingWishlistItem)
                 }
@@ -150,7 +148,6 @@ struct EditWishlistItemView: View {
             item: item,
             name: name,
             description: description,
-            price: price,
             link: URL(string: linkString),
             assignedGroupIds: Array(selectedGroupIds),
             kidId: kidId

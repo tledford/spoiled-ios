@@ -19,7 +19,7 @@ struct ManageKidsView: View {
                             showingAddKidSheet = true
                         } label: {
                             Image(systemName: "plus")
-                                .navButton(color: .brandGold)
+                                .navButton()
                         }
                     }
                 }

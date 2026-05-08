@@ -91,13 +91,13 @@ struct AddKidView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
                         Text("Cancel")
-                            .navButton(color: .brandBlue, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { Task { await saveKid() } } label: {
                         Text("Save")
-                            .navButton(color: .brandGold, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                     .disabled(kidName.isEmpty || viewModel.isSavingKid)
                 }

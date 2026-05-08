@@ -6,17 +6,20 @@ struct User: Identifiable, Codable, Hashable {
     var email: String
     var birthdate: Date
     var sizes: Sizes
+    var wishlistPurchasesResetDate: Date?
     
     init(id: String = "", 
          name: String, 
          email: String,
          birthdate: Date = Date(),
-         sizes: Sizes = Sizes()) {
+         sizes: Sizes = Sizes(),
+         wishlistPurchasesResetDate: Date? = nil) {
         self.id = id
         self.name = name
         self.email = email
         self.birthdate = birthdate
         self.sizes = sizes
+        self.wishlistPurchasesResetDate = wishlistPurchasesResetDate
     }
 }
 

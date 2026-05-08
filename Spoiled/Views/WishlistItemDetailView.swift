@@ -49,22 +49,6 @@ struct WishlistItemDetailView: View {
                         LinkPreviewView(url: link)
                     }
 
-                    // Price badge
-                    if let price = currentItem.price {
-                        HStack {
-                            Label("$\(price, specifier: "%.2f")", systemImage: "tag.fill")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Color.brandGold)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .background {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.brandGold.opacity(0.12))
-                        }
-                    }
-
                     // Description
                     if !currentItem.description.isEmpty {
                         detailCard {
@@ -189,14 +173,18 @@ struct WishlistItemDetailView: View {
             .toolbar {
                 if presentedAsSheet {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { dismiss() }
-                            .fontWeight(.semibold)
+                        Button { dismiss() } label: {
+                            Text("Done")
+                                .navButton(isIcon: false)
+                        }
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     if !isInGroupView {
-                        Button("Edit") { showingEditSheet = true }
-                            .fontWeight(.semibold)
+                        Button { showingEditSheet = true } label: {
+                            Text("Edit")
+                                .navButton(isIcon: false)
+                        }
                     }
                 }
             }

@@ -7,7 +7,6 @@ struct AddWishlistItemView: View {
 
     @State private var name = ""
     @State private var description = ""
-    @State private var price: Double?
     @State private var linkString = ""
     @State private var selectedGroupIds: Set<UUID> = []
     @State private var selectedKid: Kid?
@@ -157,7 +156,7 @@ struct AddWishlistItemView: View {
                         dismiss()
                     } label: {
                         Text("Cancel")
-                            .navButton(color: .brandBlue, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -165,7 +164,7 @@ struct AddWishlistItemView: View {
                         Task { await addItem() }
                     } label: {
                         Text("Add")
-                            .navButton(color: .brandGold, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                     .disabled(name.isEmpty || (isForKid && selectedKid == nil) || viewModel.isSavingWishlistItem)
                 }
@@ -178,7 +177,6 @@ struct AddWishlistItemView: View {
         let item = WishlistItem(
             name: name,
             description: description,
-            price: price,
             link: URL(string: linkString),
             assignedGroupIds: Array(selectedGroupIds)
         )

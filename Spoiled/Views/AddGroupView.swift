@@ -32,13 +32,13 @@ struct AddGroupView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
                         Text("Cancel")
-                            .navButton(color: .brandBlue, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { createGroup() } label: {
                         Text("Create")
-                            .navButton(color: .brandGold, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                     .disabled(name.isEmpty)
                 }

@@ -125,7 +125,7 @@ struct EditGroupView: View {
                     }
                 } label: {
                     Text("Save")
-                        .navButton(color: .brandGold, isIcon: false)
+                        .navButton(isIcon: false)
                 }
                 .disabled(name.isEmpty)
             }
@@ -233,7 +233,7 @@ struct AddGroupMemberView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
                         Text("Cancel")
-                            .navButton(color: .brandBlue, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -254,7 +254,7 @@ struct AddGroupMemberView: View {
                         }
                     } label: {
                         Text("Add")
-                            .navButton(color: .brandGold, isIcon: false)
+                            .navButton(isIcon: false)
                     }
                     .disabled(email.isEmpty)
                 }
