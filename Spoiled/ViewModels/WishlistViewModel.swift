@@ -60,6 +60,30 @@ class WishlistViewModel: ObservableObject {
         self.kidsService = kidsService
     }
 
+    // MARK: - Reset Actions
+    
+    func resetWishlistPurchases() async {
+        guard let user = currentUser else { return }
+        let now = Date()
+        do {
+            try await effectiveUsers.updateUser(
+                userId: user.id,
+                name: user.name,
+                email: user.email,
+                birthdate: user.birthdate,
+                sizes: user.sizes,
+                wishlistPurchasesResetDate: now
+            )
+            // Update local state immediately
+            currentUser?.wishlistPurchasesResetDate = now
+            // Then refresh everything to be sure
+            await load()
+        } catch {
+            elog("Failed to reset wishlist purchases: \(error)")
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+        }
+    }
+
     // Convenience to rebuild services with an auth-backed APIClient token provider
     func configureAuth(using auth: AuthViewModel) {
         let provider: (Bool) async -> String? = { force in await auth.getValidIDToken(forceRefresh: force) }
@@ -298,12 +322,11 @@ class WishlistViewModel: ObservableObject {
         }
     }
     
-    func updateWishlistItem(item: WishlistItem, name: String, description: String, price: Double?, link: URL?, assignedGroupIds: [UUID], kidId: UUID?) async -> Bool {
+    func updateWishlistItem(item: WishlistItem, name: String, description: String, link: URL?, assignedGroupIds: [UUID], kidId: UUID?) async -> Bool {
         guard let userId = currentUser?.id else { return false }
         var updated = item
         updated.name = name
         updated.description = description
-        updated.price = price
         updated.link = link
         updated.assignedGroupIds = assignedGroupIds
         do {
@@ -427,6 +450,35 @@ class WishlistViewModel: ObservableObject {
         return false
         }
     }
+
+    /// Deletes all purchased gift ideas for the current user.
+    /// Returns a tuple of (deleted count, failed count).
+    func deletePurchasedGiftIdeas() async -> (deleted: Int, failed: Int) {
+        guard let userId = currentUser?.id else { return (0, 0) }
+        let purchased = (giftIdeas ?? []).filter { $0.isPurchased }
+        guard !purchased.isEmpty else { return (0, 0) }
+
+        var deletedCount = 0
+        var failedCount = 0
+
+        for idea in purchased {
+            do {
+                try await effectiveGiftIdeas.delete(userId: userId, ideaId: idea.id)
+                giftIdeas?.removeAll(where: { $0.id == idea.id })
+                AnalyticsEvents.giftIdeaDeleted(ideaId: idea.id)
+                deletedCount += 1
+            } catch {
+                elog("Failed to delete purchased gift idea \(idea.id): \(error)")
+                failedCount += 1
+            }
+        }
+
+        if deletedCount > 0 {
+            AnalyticsEvents.purchasedGiftIdeasCleared(count: deletedCount)
+        }
+
+        return (deletedCount, failedCount)
+    }
     
     func deleteWishlistItem(_ item: WishlistItem, kidId: UUID?) async -> Bool {
         guard let userId = currentUser?.id else { return false }
@@ -454,7 +506,14 @@ class WishlistViewModel: ObservableObject {
 
     func saveProfile(name: String, email: String, birthdate: Date, sizes: Sizes) async throws {
         guard let userId = currentUser?.id else { return }
-    try await effectiveUsers.updateUser(userId: userId, name: name, email: email, birthdate: birthdate, sizes: sizes)
+        try await effectiveUsers.updateUser(
+            userId: userId,
+            name: name,
+            email: email,
+            birthdate: birthdate,
+            sizes: sizes,
+            wishlistPurchasesResetDate: currentUser?.wishlistPurchasesResetDate
+        )
         // Update local state after successful save
         var updated = currentUser
         updated?.name = name
@@ -462,7 +521,7 @@ class WishlistViewModel: ObservableObject {
         updated?.birthdate = birthdate
         updated?.sizes = sizes
         currentUser = updated
-    AnalyticsEvents.profileUpdated()
+        AnalyticsEvents.profileUpdated()
     }
     
     func updateGroup(_ group: Group, newName: String) async -> Bool {
@@ -593,5 +652,50 @@ class WishlistViewModel: ObservableObject {
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return false
         }
+    }
+
+    // MARK: - Purchased Items for Others
+    
+    struct PurchasedItem: Identifiable {
+        let id: UUID
+        let item: WishlistItem
+        let recipientName: String
+    }
+    
+    var purchasedWishlistItems: [PurchasedItem] {
+        guard let userId = currentUser?.id else { return [] }
+        var result: [PurchasedItem] = []
+        var seen = Set<UUID>()
+        
+        let sixMonthsAgo = Calendar.current.date(byAdding: .month, value: -6, to: Date()) ?? Date()
+        let effectiveResetDate = currentUser?.wishlistPurchasesResetDate ?? sixMonthsAgo
+        
+        // Items from group members
+        for group in groups ?? [] {
+            for member in group.members where member.id != userId {
+                for item in member.wishlistItems where item.isPurchased && item.purchasedBy == userId {
+                    if let purchasedAt = item.purchasedAt, purchasedAt >= effectiveResetDate {
+                        if !seen.contains(item.id) {
+                            seen.insert(item.id)
+                            result.append(PurchasedItem(id: item.id, item: item, recipientName: member.name))
+                        }
+                    }
+                }
+                
+                // Items from members' kids
+                for kid in member.kids {
+                    for item in kid.wishlistItems where item.isPurchased && item.purchasedBy == userId {
+                        if let purchasedAt = item.purchasedAt, purchasedAt >= effectiveResetDate {
+                            if !seen.contains(item.id) {
+                                seen.insert(item.id)
+                                result.append(PurchasedItem(id: item.id, item: item, recipientName: kid.name))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return result.sorted { ($0.item.purchasedAt ?? Date.distantPast) > ($1.item.purchasedAt ?? Date.distantPast) }
     }
 }

@@ -31,59 +31,114 @@ struct EditProfileView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                if let msg = errorMessage {
-                    Text(msg).foregroundStyle(.red)
+            ScrollView {
+                VStack(spacing: 24) {
+                    if let msg = errorMessage {
+                        Text(msg)
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                            .padding(.horizontal, 4)
+                    }
+                    
+                    // Personal Info
+                    VStack(alignment: .leading, spacing: 12) {
+                        AppSectionHeader(icon: "person.fill", title: "Personal Info")
+                        
+                        VStack(spacing: 0) {
+                            fieldRow(label: "Name") {
+                                TextField("Enter your name", text: $name)
+                                    .multilineTextAlignment(.trailing)
+                            }
+                            
+                            Divider().padding(.leading, 16)
+                            
+                            fieldRow(label: "Email") {
+                                TextField("Enter email", text: $email)
+                                    .textInputAutocapitalization(.never)
+                                    .keyboardType(.emailAddress)
+                                    .autocorrectionDisabled()
+                                    .multilineTextAlignment(.trailing)
+                            }
+                            
+                            Divider().padding(.leading, 16)
+                            
+                            fieldRow(label: "Birthdate") {
+                                DatePicker(
+                                    "",
+                                    selection: $birthdate,
+                                    displayedComponents: [.date]
+                                )
+                                .labelsHidden()
+                            }
+                        }
+                        .spoiledCard()
+                    }
+                    
+                    // Sizes
+                    VStack(alignment: .leading, spacing: 12) {
+                        AppSectionHeader(icon: "tshirt.fill", title: "Sizes")
+                        
+                        VStack(spacing: 0) {
+                            sizeField(label: "Shirt", placeholder: "M, L, XL", text: $shirtSize)
+                            Divider().padding(.leading, 16)
+                            sizeField(label: "Pants", placeholder: "32x32", text: $pantsSize)
+                            Divider().padding(.leading, 16)
+                            sizeField(label: "Shoes", placeholder: "10.5", text: $shoesSize)
+                            Divider().padding(.leading, 16)
+                            sizeField(label: "Sweatshirt", placeholder: "L", text: $sweatshirtSize)
+                            Divider().padding(.leading, 16)
+                            sizeField(label: "Hat", placeholder: "7 1/4", text: $hatSize)
+                        }
+                        .spoiledCard()
+                    }
                 }
-                Section("Personal Info") {
-                    TextField("Name", text: $name)
-                    TextField("Email", text: $email)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                    DatePicker(
-                        "Birthdate",
-                        selection: $birthdate,
-                        displayedComponents: [.date]
-                    )
-                }
-                
-                Section("Sizes") {
-                    LabeledContent("Shirt") {
-                        TextField("M, L, XL", text: $shirtSize)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    LabeledContent("Pants") {
-                        TextField("32x32", text: $pantsSize)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    LabeledContent("Shoes") {
-                        TextField("10.5", text: $shoesSize)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    LabeledContent("Sweatshirt") {
-                        TextField("L", text: $sweatshirtSize)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    LabeledContent("Hat") {
-                        TextField("7 1/4", text: $hatSize)
-                            .multilineTextAlignment(.trailing)
-                    }
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .disabled(isSaving)
+                    Button { dismiss() } label: {
+                        Text("Cancel")
+                            .navButton(isIcon: false)
+                    }
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "Saving…" : "Save") { Task { await saveProfile() } }
-                        .disabled(isSaving || name.isEmpty || email.isEmpty)
+                    Button { Task { await saveProfile() } } label: {
+                        Text(isSaving ? "Saving…" : "Save")
+                            .navButton(isIcon: false)
+                    }
+                    .disabled(isSaving || name.isEmpty || email.isEmpty)
                 }
             }
         }
-    .trackScreen("edit_profile")
+        .trackScreen("edit_profile")
+    }
+    
+    @ViewBuilder
+    private func fieldRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 15, weight: .medium))
+            Spacer()
+            content()
+                .font(.system(size: 15))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+    
+    @ViewBuilder
+    private func sizeField(label: String, placeholder: String, text: Binding<String>) -> some View {
+        fieldRow(label: label) {
+            TextField(placeholder, text: text)
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(.secondary)
+        }
     }
     
     private func saveProfile() async {

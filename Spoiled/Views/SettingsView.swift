@@ -6,82 +6,101 @@ struct SettingsView: View {
     @EnvironmentObject private var auth: AuthViewModel
     @EnvironmentObject private var toast: ToastCenter
     @State private var showingEditProfile = false
-    @State private var showDebug = false
     @State private var showDeleteConfirm = false
     @State private var showAppleDeletionSheet = false
-    
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                List {
-                    Section("Profile") {
-                        if let user = viewModel.currentUser {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(user.name)
-                                        .font(.headline)
-                                    Text(user.email)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                Button("Edit") {
-                                    showingEditProfile = true
-                                }
+            List {
+                // Profile card
+                Section {
+                    if let user = viewModel.currentUser {
+                        HStack(spacing: 14) {
+                            PersonAvatar(name: user.name, size: 56)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(user.name)
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text(user.email)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.secondary)
                             }
+
+                            Spacer()
+
+                            Button {
+                                showingEditProfile = true
+                            } label: {
+                                Text("Edit")
+                                    .navButton(isIcon: false)
+                            }
+                            .buttonStyle(.plain)
                         }
-                    }
-                    
-                    Section("Kids") {
-                        NavigationLink("Manage Kids") {
-                            ManageKidsView()
-                        }
-                    }
-                    
-                    Section("Reports") {
-                        NavigationLink("Purchased Gifts") {
-                            PurchasedGiftsReportView()
-                        }
+                        .padding(.vertical, 6)
+                        .listRowBackground(Color.appSurface)
                     }
                 }
-                .scrollDisabled(true)
-                .frame(maxHeight: .infinity, alignment: .top)
-                
+
+                Section("Family") {
+                    NavigationLink {
+                        ManageKidsView()
+                    } label: {
+                        Label("Manage Kids", systemImage: "figure.and.child.holdinghands")
+                    }
+                    .listRowBackground(Color.appSurface)
+                }
+
+                Section("Reports") {
+                    NavigationLink {
+                        PurchasedGiftsReportView()
+                    } label: {
+                        Label("Purchased Gifts", systemImage: "checklist")
+                    }
+                    .listRowBackground(Color.appSurface)
+                }
+
                 // Account actions
-                VStack(spacing: 12) {
+                Section {
                     Button(role: .destructive) {
                         auth.signOut()
                     } label: {
-                        Text("Sign Out")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    
-                    Text("Delete Account")
-                        .font(.footnote)
-                        .foregroundColor(.red)
-                        .onTapGesture {
-                            showDeleteConfirm = true
+                        HStack {
+                            Spacer()
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                            Spacer()
                         }
+                    }
+                    .listRowBackground(Color.appSurface)
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 16)
-                
-                Spacer()
-            }
-            
-            // Footer with Privacy Policy
-            .safeAreaInset(edge: .bottom) {
-                VStack {
-                    Link("Privacy Policy", destination: AppConfig.api.privacyPolicyURL)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, 50)
+
+                // Danger zone
+                Section {
+                    Button(role: .destructive) {
+                        showDeleteConfirm = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Delete Account")
+                                .font(.footnote)
+                            Spacer()
+                        }
+                    }
+                    .listRowBackground(Color.appSurface)
+                } footer: {
+                    HStack {
+                        Spacer()
+                        Link("Privacy Policy", destination: AppConfig.api.privacyPolicyURL)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.top, 8)
                 }
-                .frame(maxWidth: .infinity)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .alert("Delete Account?", isPresented: $showDeleteConfirm) {
                 if auth.isCurrentUserApple() {
                     Button("Delete Now", role: .destructive) {
@@ -105,9 +124,11 @@ struct SettingsView: View {
                     .environmentObject(auth)
             }
         }
-    .trackScreen("settings")
+        .trackScreen("settings")
     }
 }
+
+// MARK: - AppleAccountDeletionSheet
 
 private struct AppleAccountDeletionSheet: View {
     @EnvironmentObject var auth: AuthViewModel
@@ -116,12 +137,18 @@ private struct AppleAccountDeletionSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
+            VStack(spacing: 20) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.red)
+
                 Text("Confirm Deletion")
                     .font(.title2).bold()
                 Text("To delete your account, Apple requires you to re-authorize. This action is immediate and irreversible.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+
                 SignInWithAppleButton(.continue, onRequest: { req in
                     auth.beginAppleAccountDeletion(req)
                 }, onCompletion: { result in
@@ -129,16 +156,18 @@ private struct AppleAccountDeletionSheet: View {
                         print("Apple deletion reauth failed: \(error.localizedDescription)")
                     }
                     auth.handleAppleAccountDeletionCompletion(result)
-                    // After completion, dismiss; app will transition to unauthenticated on success
                     dismiss()
                 })
                 .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-                .frame(height: 44)
+                .frame(height: 50)
+                .padding(.horizontal)
 
                 Button("Cancel", role: .cancel) { dismiss() }
-                    .padding(.top, 8)
+                    .padding(.top, 4)
             }
-            .padding()
+            .padding(.vertical, 32)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Delete Account")
             .navigationBarTitleDisplayMode(.inline)
         }

@@ -16,6 +16,7 @@ struct APIUser: Decodable {
     let email: String
     let birthdate: String? // Accept various formats/null; we'll parse later
     let sizes: Sizes
+    let wishlistPurchasesResetDate: String?
 }
 
 struct APIGroup: Decodable {
@@ -94,7 +95,8 @@ struct BootstrapService {
                             name: response.currentUser.name,
                             email: response.currentUser.email,
                             birthdate: parseAPIDate(response.currentUser.birthdate) ?? Date(),
-                            sizes: response.currentUser.sizes)
+                            sizes: response.currentUser.sizes,
+                            wishlistPurchasesResetDate: parseAPIDate(response.currentUser.wishlistPurchasesResetDate))
 
             let groups: [Group] = response.groups.map { g in
                 let members: [GroupMember] = g.members.map { m in
@@ -149,7 +151,8 @@ struct BootstrapService {
                                 name: response.currentUser.name,
                                 email: response.currentUser.email,
                                 birthdate: parseAPIDate(response.currentUser.birthdate) ?? Date(),
-                                sizes: response.currentUser.sizes)
+                                sizes: response.currentUser.sizes,
+                                wishlistPurchasesResetDate: parseAPIDate(response.currentUser.wishlistPurchasesResetDate))
                 let groups: [Group] = response.groups.map { g in
                     let members: [GroupMember] = g.members.map { m in
                         let kidModels: [GroupMemberKid] = (m.kids ?? []).map { k in

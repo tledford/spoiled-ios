@@ -1,34 +1,46 @@
 import SwiftUI
 
+// MARK: - MyWishlistView
+
 struct MyWishlistView: View {
     @EnvironmentObject private var viewModel: WishlistViewModel
     @State private var showingAddItemSheet = false
     @State private var selectedTab = "My Items"
-    
+
     var body: some View {
-    NavigationStack {
-            VStack {
-                if viewModel.kids?.isEmpty == false {
-                    Picker("Select List", selection: $selectedTab) {
-                        Text("My Items").tag("My Items")
-                        Text("Kids' Items").tag("Kids Items")
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    if viewModel.kids?.isEmpty == false {
+                        GlassSegmentedPicker(
+                            options: ["My Items", "Kids Items"],
+                            selection: $selectedTab
+                        )
+                        .padding(.horizontal, 0)
+
+                        if selectedTab == "My Items" {
+                            MyItemsListView(viewModel: viewModel)
+                        } else {
+                            KidsItemsListView(viewModel: viewModel)
+                        }
+                    } else {
+                        MyItemsListView(viewModel: viewModel)
                     }
-                    .pickerStyle(.segmented)
-                    .padding()
                 }
-                
-                if selectedTab == "My Items" || viewModel.kids?.isEmpty == true {
-                    MyItemsListView(viewModel: viewModel)
-                } else {
-                    KidsItemsListView(viewModel: viewModel)
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
-        .navigationTitle("My Wishlist")
-        .navigationBarTitleDisplayMode(.inline)
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("My Wishlist")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddItemSheet = true }) {
+                    Button {
+                        showingAddItemSheet = true
+                    } label: {
                         Image(systemName: "plus")
+                            .navButton()
                     }
                 }
             }
@@ -36,21 +48,58 @@ struct MyWishlistView: View {
                 AddWishlistItemView(isForKid: selectedTab == "Kids Items")
             }
             .refreshable { await viewModel.load() }
-    }
-    .trackScreen("my_wishlist")
+        }
+        .trackScreen("my_wishlist")
     }
 }
+
+// MARK: - GlassSegmentedPicker
+
+struct GlassSegmentedPicker: View {
+    let options: [String]
+    @Binding var selection: String
+    @Namespace private var ns
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.self) { option in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        selection = option
+                    }
+                } label: {
+                    Text(option)
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(selection == option ? .white : .secondary)
+                }
+                .background {
+                    if selection == option {
+                        Capsule()
+                            .fill(Color.brandGold)
+                            .matchedGeometryEffect(id: "pill", in: ns)
+                    }
+                }
+            }
+        }
+        .padding(4)
+        .background(Color.appSurface, in: Capsule())
+    }
+}
+
+// MARK: - MyItemsListView
 
 struct MyItemsListView: View {
     @ObservedObject var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
-    
+
     var body: some View {
-        List {
-            if let items = viewModel.wishlistItems, !items.isEmpty {
-                ForEach(items) { item in
+        if let items = viewModel.wishlistItems, !items.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: nil, groupId: nil, groupMemberId: nil)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        .contextMenu {
                             Button(role: .destructive) {
                                 Task {
                                     let ok = await viewModel.deleteWishlistItem(item, kidId: nil)
@@ -60,48 +109,86 @@ struct MyItemsListView: View {
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
-                            .disabled(viewModel.deletingWishlistItemIds.contains(item.id))
                         }
+                    
+                    if index < items.count - 1 {
+                        Divider().padding(.leading, 16)
+                    }
                 }
-            } else {
-                Text("Your wishlist is empty. Tap the + button to add items!")
-                    .foregroundColor(.secondary)
-                    .padding()
             }
+            .spoiledCard()
+        } else {
+            EmptyStateView(
+                systemImage: "gift",
+                title: "Your wishlist is empty",
+                subtitle: "Tap + to add your first wish"
+            )
+            .padding(.top, 40)
         }
     }
 }
 
+// MARK: - KidsItemsListView
+
 struct KidsItemsListView: View {
     @ObservedObject var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
-    
+
     var body: some View {
-        List {
-            if let currentUserKids = viewModel.kids {
-                ForEach(currentUserKids) { kid in
-                    Section(kid.name) {
-                        ForEach(kid.wishlistItems) { item in
-                            WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: kid.id, groupId: nil, groupMemberId: nil)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        Task {
-                                            let ok = await viewModel.deleteWishlistItem(item, kidId: kid.id)
-                                            if ok { toastCenter.success("Item deleted") }
-                                            else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
+        if let kids = viewModel.kids, !kids.isEmpty {
+            VStack(spacing: 24) {
+                ForEach(kids) { kid in
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(kid.name.uppercased())
+                            .font(.system(size: 12, weight: .bold))
+                            .tracking(0.8)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 4)
+
+                        VStack(spacing: 0) {
+                            if kid.wishlistItems.isEmpty {
+                                Text("No items yet")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(16)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                ForEach(Array(kid.wishlistItems.enumerated()), id: \.element.id) { index, item in
+                                    WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: kid.id, groupId: nil, groupMemberId: nil)
+                                        .contextMenu {
+                                            Button(role: .destructive) {
+                                                Task {
+                                                    let ok = await viewModel.deleteWishlistItem(item, kidId: kid.id)
+                                                    if ok { toastCenter.success("Item deleted") }
+                                                    else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
+                                                }
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
                                         }
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    
+                                    if index < kid.wishlistItems.count - 1 {
+                                        Divider().padding(.leading, 16)
                                     }
-                                    .disabled(viewModel.deletingWishlistItemIds.contains(item.id))
                                 }
+                            }
                         }
+                        .spoiledCard()
                     }
                 }
             }
+        } else {
+            EmptyStateView(
+                systemImage: "figure.and.child.holdinghands",
+                title: "No kids added",
+                subtitle: "Add kids in Settings to manage their wishlists"
+            )
+            .padding(.top, 40)
         }
     }
 }
+
+// MARK: - WishlistItemRow
 
 struct WishlistItemRow: View {
     let item: WishlistItem
@@ -110,58 +197,87 @@ struct WishlistItemRow: View {
     let kidId: UUID?
     let groupId: UUID?
     let groupMemberId: String?
-    
-    init(item: WishlistItem, 
-         viewModel: WishlistViewModel, 
-         isInGroupView: Bool, 
-         kidId: UUID? = nil, 
-         groupId: UUID? = nil, 
-    groupMemberId: String? = nil) {
+    var useSheet: Bool = false
+
+    @State private var showDetailSheet = false
+
+    init(item: WishlistItem,
+         viewModel: WishlistViewModel,
+         isInGroupView: Bool,
+         kidId: UUID? = nil,
+         groupId: UUID? = nil,
+         groupMemberId: String? = nil,
+         useSheet: Bool = false) {
         self.item = item
         self.viewModel = viewModel
         self.isInGroupView = isInGroupView
         self.kidId = kidId
         self.groupId = groupId
         self.groupMemberId = groupMemberId
+        self.useSheet = useSheet
     }
-    
+
     var body: some View {
-        NavigationLink(destination: WishlistItemDetailView(
-            item: item,
-            isInGroupView: isInGroupView,
-            kidId: kidId,
-            groupId: groupId,
-            groupMemberId: groupMemberId
-        )) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.name)
-                        .font(.headline)
-                    HStack(spacing: 8) {
-                        if let price = item.price {
-                            Text("$\(price, specifier: "%.2f")")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        if !isInGroupView && item.assignedGroupIds.isEmpty {
-                            HStack(spacing: 4) {
-                                Image(systemName: "lock.fill").font(.caption2)
-                                Text("Private").font(.caption)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .foregroundColor(.white)
-                            .background(Color.gray.opacity(0.6))
-                            .clipShape(Capsule())
-                            .accessibilityLabel("Not shared with any groups")
-                        }
-                    }
+        rowView
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private var rowView: some View {
+        if useSheet {
+            Button {
+                showDetailSheet = true
+            } label: {
+                rowContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: $showDetailSheet) {
+                WishlistItemDetailView(
+                    item: item,
+                    isInGroupView: isInGroupView,
+                    kidId: kidId,
+                    groupId: groupId,
+                    groupMemberId: groupMemberId,
+                    presentedAsSheet: true
+                )
+                .environmentObject(viewModel)
+            }
+        } else {
+            NavigationLink(destination: WishlistItemDetailView(
+                item: item,
+                isInGroupView: isInGroupView,
+                kidId: kidId,
+                groupId: groupId,
+                groupMemberId: groupMemberId
+            )) {
+                rowContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var rowContent: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.name)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(isInGroupView && item.isPurchased ? .secondary : .primary)
+                    .strikethrough(isInGroupView && item.isPurchased, color: .secondary)
+
+                if !isInGroupView && item.assignedGroupIds.isEmpty {
+                    PrivateBadge()
                 }
-                Spacer()
-                if isInGroupView && item.isPurchased {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                }
+            }
+            Spacer()
+            if isInGroupView && item.isPurchased {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.system(size: 18))
             }
         }
     }

@@ -75,6 +75,9 @@ enum AnalyticsEvents {
     static func giftIdeaDeleted(ideaId: UUID) {
         Analytics.logEvent("gift_idea_deleted", parameters: ["idea_id": ideaId.uuidString])
     }
+    static func purchasedGiftIdeasCleared(count: Int) {
+        Analytics.logEvent("purchased_gift_ideas_cleared", parameters: ["count": count])
+    }
     static func wishlistItemPurchased(itemId: UUID, context: String) {
         Analytics.logEvent("wishlist_item_purchased", parameters: [
             "item_id": itemId.uuidString,

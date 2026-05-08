@@ -7,6 +7,7 @@ private struct UpdateUserPayload: Encodable {
     let email: String?
     let birthdate: Date?
     let sizes: String?
+    let wishlistPurchasesResetDate: Date?
 }
 
 private struct UpdateUserRequest: APIRequest {
@@ -16,9 +17,9 @@ private struct UpdateUserRequest: APIRequest {
     let headers: [String: String] = [:]
     let body: Data?
 
-    init(userId: String, name: String?, email: String?, birthdate: Date?, sizesJSON: String?) {
+    init(userId: String, name: String?, email: String?, birthdate: Date?, sizesJSON: String?, wishlistPurchasesResetDate: Date?) {
         self.path = "/users/\(userId)"
-        let payload = UpdateUserPayload(name: name, email: email, birthdate: birthdate, sizes: sizesJSON)
+        let payload = UpdateUserPayload(name: name, email: email, birthdate: birthdate, sizes: sizesJSON, wishlistPurchasesResetDate: wishlistPurchasesResetDate)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         self.body = try? encoder.encode(payload)
@@ -35,11 +36,11 @@ struct UsersService {
     let client: APIClient
     init(client: APIClient = APIClient()) { self.client = client }
 
-    func updateUser(userId: String, name: String, email: String, birthdate: Date, sizes: Sizes) async throws {
+    func updateUser(userId: String, name: String, email: String, birthdate: Date, sizes: Sizes, wishlistPurchasesResetDate: Date?) async throws {
         // sizes must be a JSON string per API schema
         let sizesData = try JSONEncoder().encode(sizes)
         let sizesJSON = String(data: sizesData, encoding: .utf8)
-        _ = try await client.execute(UpdateUserRequest(userId: userId, name: name, email: email, birthdate: birthdate, sizesJSON: sizesJSON))
+        _ = try await client.execute(UpdateUserRequest(userId: userId, name: name, email: email, birthdate: birthdate, sizesJSON: sizesJSON, wishlistPurchasesResetDate: wishlistPurchasesResetDate))
     }
 
     func deleteMe() async throws {

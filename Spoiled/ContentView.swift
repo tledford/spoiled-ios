@@ -1,47 +1,32 @@
-//
-//  ContentView.swift
-//  Spoiled
-//
-//  Created by Tommy Ledford on 1/1/25.
-//
-
 import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var wishlistViewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
-    @State private var selectedTab = 0
     @State private var showEditProfile = false
-    
+
     var body: some View {
-        TabView(selection: $selectedTab) {
-            MyWishlistView()
-                // .environmentObject(wishlistViewModel)
-                .tabItem { Label("Wishlist", systemImage: "gift") }
-                .tag(0)
-            
-            GroupsView()
-                // .environmentObject(wishlistViewModel)
-                .tabItem { Label("Groups", systemImage: "person.3") }
-                .tag(1)
-            
-            GiftIdeasView()
-                // .environmentObject(wishlistViewModel)
-                .tabItem { Label("Gift Ideas", systemImage: "lightbulb") }
-                .tag(2)
-            
-            SettingsView()
-                // .environmentObject(wishlistViewModel)
-                .tabItem { Label("Settings", systemImage: "gear") }
-                .tag(3)
+        TabView {
+            Tab("Home", systemImage: "house.fill") {
+                HomeView()
+            }
+            Tab("Wishlist", systemImage: "gift.fill") {
+                MyWishlistView()
+            }
+            Tab("Groups", systemImage: "person.3.fill") {
+                GroupsView()
+            }
+            Tab("Gift Ideas", systemImage: "lightbulb.fill") {
+                GiftIdeasView()
+            }
+            Tab("Settings", systemImage: "gearshape.fill") {
+                SettingsView()
+            }
         }
         .overlay(alignment: .top) {
             if wishlistViewModel.isLoading {
                 ProgressView().padding(.top, 8)
             }
-            // } else if let error = wishlistViewModel.errorMessage {
-            //     Text(error).foregroundStyle(.red).padding(.top, 8)
-            // }
         }
         .toast(toastCenter)
         .sheet(isPresented: $showEditProfile) {
@@ -49,7 +34,7 @@ struct ContentView: View {
                 .environmentObject(toastCenter)
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NewUserCreated"))) { _ in
-            toastCenter.info("Welcome! Let’s finish setting up your profile.")
+            toastCenter.info("Welcome! Let's finish setting up your profile.")
             showEditProfile = true
         }
     }

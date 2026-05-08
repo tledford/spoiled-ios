@@ -19,62 +19,100 @@ struct EditGroupView: View {
     }
     
     var body: some View {
-        Form {
-            Section("Group Info") {
-                TextField("Group Name", text: $name)
-            }
-            
-            Section("Members") {
-                ForEach(group.members) { member in
-                    HStack {
-                        Text(member.name)
-                        Spacer()
-                        Button(role: .destructive) {
-                            memberToDelete = member
-                            showingDeleteMemberAlert = true
+        ScrollView {
+            VStack(spacing: 24) {
+                // Group Info
+                VStack(alignment: .leading, spacing: 8) {
+                    AppSectionHeader(icon: "info.circle.fill", title: "Group Info")
+                    VStack(spacing: 0) {
+                        TextField("Group Name", text: $name)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                    }
+                    .spoiledCard()
+                }
+
+                // Members
+                VStack(alignment: .leading, spacing: 8) {
+                    AppSectionHeader(icon: "person.2.fill", title: "Members")
+                    VStack(spacing: 0) {
+                        ForEach(group.members) { member in
+                            HStack {
+                                Text(member.name)
+                                Spacer()
+                                Button(role: .destructive) {
+                                    memberToDelete = member
+                                    showingDeleteMemberAlert = true
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .foregroundColor(.red)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+
+                            Divider().padding(.leading, 16)
+                        }
+
+                        Button {
+                            showingAddMemberSheet = true
                         } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(.red)
+                            HStack {
+                                Image(systemName: "person.badge.plus")
+                                Text("Add Member")
+                            }
+                            .foregroundStyle(Color.brandGold)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
                         }
+                        .buttonStyle(.plain)
                     }
+                    .spoiledCard()
                 }
-                
-                Button {
-                    showingAddMemberSheet = true
-                } label: {
-                    HStack {
-                        Image(systemName: "person.badge.plus")
-                        Text("Add Member")
+
+                if !group.pendingInvitations.isEmpty {
+                    // Pending Invitations
+                    VStack(alignment: .leading, spacing: 8) {
+                        AppSectionHeader(icon: "envelope.fill", title: "Pending Invitations")
+                        VStack(spacing: 0) {
+                            ForEach(Array(group.pendingInvitations.enumerated()), id: \.element.id) { index, pendingInvitation in
+                                HStack {
+                                    Text(pendingInvitation.email)
+                                        .font(.body)
+                                    Spacer()
+                                    Button(role: .destructive) {
+                                        pendingInvitationToDelete = pendingInvitation
+                                        showingDeletePendingInvitationAlert = true
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+
+                                if index < group.pendingInvitations.count - 1 {
+                                    Divider().padding(.leading, 16)
+                                }
+                            }
+                        }
+                        .spoiledCard()
                     }
                 }
             }
-            
-            if !group.pendingInvitations.isEmpty {
-                Section("Pending Invitations") {
-                    ForEach(group.pendingInvitations) { pendingInvitation in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(pendingInvitation.email)
-                                    .font(.body)
-                            }
-                            Spacer()
-                            Button(role: .destructive) {
-                                pendingInvitationToDelete = pendingInvitation
-                                showingDeletePendingInvitationAlert = true
-                            } label: {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
-                            }
-                        }
-                    }
-                }
-            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 32)
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Edit Group")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
+                Button {
                     Task {
                         let ok = await viewModel.updateGroup(group, newName: name)
                         if ok {
@@ -85,6 +123,9 @@ struct EditGroupView: View {
                             toastCenter.error(viewModel.errorMessage ?? "Failed to update group")
                         }
                     }
+                } label: {
+                    Text("Save")
+                        .navButton(isIcon: false)
                 }
                 .disabled(name.isEmpty)
             }
@@ -142,20 +183,6 @@ struct EditGroupView: View {
         }
     .trackScreen("edit_group")
     }
-    
-    private func saveGroup() {
-        // kept for potential direct calls; current Save button uses the async Task above
-        Task {
-            let ok = await viewModel.updateGroup(group, newName: name)
-            if ok {
-                await viewModel.refreshAll()
-                toastCenter.success("Group updated")
-                dismiss()
-            } else {
-                toastCenter.error(viewModel.errorMessage ?? "Failed to update group")
-            }
-        }
-    }
 }
 
 struct AddGroupMemberView: View {
@@ -175,29 +202,42 @@ struct AddGroupMemberView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Email Address", text: $email)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        AppSectionHeader(icon: "envelope.fill", title: "Invite Member")
+                        VStack(spacing: 0) {
+                            TextField("Email Address", text: $email)
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.emailAddress)
+                                .autocorrectionDisabled()
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                        }
+                        .spoiledCard()
+                        
+                        Text("Enter the email address of the person you want to add to this group.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 4)
+                    }
                 }
-                
-                Section {
-                    Text("Enter the email address of the person you want to add to this group.")
-                        .foregroundStyle(.secondary)
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Add Member")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+                    Button { dismiss() } label: {
+                        Text("Cancel")
+                            .navButton(isIcon: false)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button {
                         if isValidEmail {
                             Task {
                                 let ok = await viewModel.addMemberToGroup(email: email, to: group)
@@ -212,6 +252,9 @@ struct AddGroupMemberView: View {
                         } else {
                             showingInvalidEmailAlert = true
                         }
+                    } label: {
+                        Text("Add")
+                            .navButton(isIcon: false)
                     }
                     .disabled(email.isEmpty)
                 }
@@ -224,4 +267,4 @@ struct AddGroupMemberView: View {
         }
     .trackScreen("add_group_member")
     }
-} 
+}
