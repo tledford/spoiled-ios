@@ -45,11 +45,19 @@ class WishlistViewModel: ObservableObject {
     private let kidsService: KidsService
     private let wishlistService: WishlistService
 
-    #if DEBUG
     private static let logger = Logger(subsystem: "Spoiled", category: "WishlistViewModel")
-    private func dlog(_ message: String) { WishlistViewModel.logger.debug("\(message)") }
-    private func elog(_ message: String) { WishlistViewModel.logger.error("\(message)") }
-    #endif
+
+    private func dlog(_ message: String) {
+        #if DEBUG
+        WishlistViewModel.logger.debug("\(message)")
+        #endif
+    }
+
+    private func elog(_ message: String) {
+        #if DEBUG
+        WishlistViewModel.logger.error("\(message)")
+        #endif
+    }
 
     init(bootstrapService: BootstrapService = BootstrapService(), usersService: UsersService = UsersService(), giftIdeasService: GiftIdeasService = GiftIdeasService(), wishlistService: WishlistService = WishlistService(), groupsService: GroupsService = GroupsService(), kidsService: KidsService = KidsService()) {
         self.bootstrapService = bootstrapService
@@ -144,9 +152,7 @@ class WishlistViewModel: ObservableObject {
 //            #else
             let data = try await effectiveBootstrap.load()
 //            #endif
-            #if DEBUG
             dlog("Bootstrap success: user=\(data.0.id) groups=\(data.1.count) kids=\(data.2.count) myItems=\(data.3.count) giftIdeas=\(data.4.count)")
-            #endif
             self.currentUser = data.0
             self.groups = data.1
             self.kids = data.2
@@ -158,15 +164,11 @@ class WishlistViewModel: ObservableObject {
                 AnalyticsEvents.signUp(method: AnalyticsAuthProvider.last())
             }
         } catch {
-            #if DEBUG
             elog("Bootstrap failed: \(String(describing: error))")
-            #endif
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         }
         isLoading = false
-        #if DEBUG
         dlog("Bootstrap finished. isLoading=false")
-        #endif
     }
 
     func toggleItemPurchased(_ item: WishlistItem, groupId: UUID?, groupMemberId: String?, kidId: UUID? = nil) {
