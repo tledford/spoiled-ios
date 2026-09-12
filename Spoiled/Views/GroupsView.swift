@@ -409,25 +409,6 @@ private func hasNonEmptySizes(_ sizes: Sizes) -> Bool {
         || !sizes.sweatshirt.isEmpty || !sizes.hat.isEmpty
 }
 
-private func nextBirthdayDate(from birthdate: Date, relativeTo now: Date = Date()) -> Date {
-    let cal = Calendar.current
-    var comps = cal.dateComponents([.month, .day], from: birthdate)
-    let currentYear = cal.component(.year, from: now)
-    comps.year = currentYear
-    let thisYear = cal.date(from: comps) ?? now
-    if thisYear >= cal.startOfDay(for: now) { return thisYear }
-    comps.year = currentYear + 1
-    return cal.date(from: comps) ?? thisYear
-}
-
-func daysUntilNextBirthday(from birthdate: Date, relativeTo now: Date = Date()) -> Int {
-    let cal = Calendar.current
-    let start = cal.startOfDay(for: now)
-    let next = nextBirthdayDate(from: birthdate, relativeTo: start)
-    let days = cal.dateComponents([.day], from: start, to: next).day ?? 0
-    return max(0, days)
-}
-
 // MARK: - IdentSizes
 
 struct IdentSizes: Identifiable, Equatable {

@@ -12,6 +12,9 @@
 		655F68E72E78D9E7002B95D5 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 655F68E62E78D9E7002B95D5 /* FirebaseCrashlytics */; };
 		655F68EA2E78DA28002B95D5 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 655F68E92E78DA28002B95D5 /* GoogleSignIn */; };
 		655F68EC2E78DA28002B95D5 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 655F68EB2E78DA28002B95D5 /* GoogleSignInSwift */; };
+		65C0DE0000000000000000AE /* SpoiledShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 65C0DE0000000000000000A2 /* SpoiledShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		65C0DE0000000000000000B1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 65C0DE0000000000000000AF /* FirebaseAuth */; };
+		65C0DE0000000000000000B2 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 65C0DE0000000000000000B0 /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,12 +32,34 @@
 			remoteGlobalIDString = 652DAB422D26527600792D89;
 			remoteInfo = Spoiled;
 		};
+		65C0DE0000000000000000AD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 652DAB3B2D26527600792D89 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 65C0DE0000000000000000A1;
+			remoteInfo = SpoiledShare;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		65C0DE0000000000000000AB /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				65C0DE0000000000000000AE /* SpoiledShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		652DAB432D26527600792D89 /* Spoiled.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Spoiled.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		652DAB532D26527700792D89 /* SpoiledTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpoiledTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		652DAB5D2D26527700792D89 /* SpoiledUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpoiledUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		65C0DE0000000000000000A2 /* SpoiledShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpoiledShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -44,6 +69,13 @@
 				Info.plist,
 			);
 			target = 652DAB422D26527600792D89 /* Spoiled */;
+		};
+		65C0DE0000000000000000B3 /* Exceptions for "SpoiledShare" folder in "SpoiledShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 65C0DE0000000000000000A1 /* SpoiledShare */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -64,6 +96,19 @@
 		652DAB602D26527700792D89 /* SpoiledUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SpoiledUITests;
+			sourceTree = "<group>";
+		};
+		65C0DE0000000000000000A3 /* SpoiledShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				65C0DE0000000000000000B3 /* Exceptions for "SpoiledShare" folder in "SpoiledShare" target */,
+			);
+			path = SpoiledShare;
+			sourceTree = "<group>";
+		};
+		65C0DE0000000000000000A4 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -95,13 +140,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		65C0DE0000000000000000A6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				65C0DE0000000000000000B1 /* FirebaseAuth in Frameworks */,
+				65C0DE0000000000000000B2 /* FirebaseCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		652DAB3A2D26527600792D89 = {
 			isa = PBXGroup;
 			children = (
+				65C0DE0000000000000000A4 /* Shared */,
 				652DAB452D26527600792D89 /* Spoiled */,
+				65C0DE0000000000000000A3 /* SpoiledShare */,
 				652DAB562D26527700792D89 /* SpoiledTests */,
 				652DAB602D26527700792D89 /* SpoiledUITests */,
 				652DAB442D26527600792D89 /* Products */,
@@ -114,6 +170,7 @@
 				652DAB432D26527600792D89 /* Spoiled.app */,
 				652DAB532D26527700792D89 /* SpoiledTests.xctest */,
 				652DAB5D2D26527700792D89 /* SpoiledUITests.xctest */,
+				65C0DE0000000000000000A2 /* SpoiledShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -128,13 +185,16 @@
 				652DAB3F2D26527600792D89 /* Sources */,
 				652DAB402D26527600792D89 /* Frameworks */,
 				652DAB412D26527600792D89 /* Resources */,
+				65C0DE0000000000000000AB /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				65C0DE0000000000000000AC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				652DAB452D26527600792D89 /* Spoiled */,
+				65C0DE0000000000000000A4 /* Shared */,
 			);
 			name = Spoiled;
 			packageProductDependencies = (
@@ -194,6 +254,31 @@
 			productReference = 652DAB5D2D26527700792D89 /* SpoiledUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		65C0DE0000000000000000A1 /* SpoiledShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 65C0DE0000000000000000A8 /* Build configuration list for PBXNativeTarget "SpoiledShare" */;
+			buildPhases = (
+				65C0DE0000000000000000A5 /* Sources */,
+				65C0DE0000000000000000A6 /* Frameworks */,
+				65C0DE0000000000000000A7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				65C0DE0000000000000000A3 /* SpoiledShare */,
+				65C0DE0000000000000000A4 /* Shared */,
+			);
+			name = SpoiledShare;
+			packageProductDependencies = (
+				65C0DE0000000000000000AF /* FirebaseAuth */,
+				65C0DE0000000000000000B0 /* FirebaseCore */,
+			);
+			productName = SpoiledShare;
+			productReference = 65C0DE0000000000000000A2 /* SpoiledShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -214,6 +299,9 @@
 					652DAB5C2D26527700792D89 = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 652DAB422D26527600792D89;
+					};
+					65C0DE0000000000000000A1 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -238,6 +326,7 @@
 				652DAB422D26527600792D89 /* Spoiled */,
 				652DAB522D26527700792D89 /* SpoiledTests */,
 				652DAB5C2D26527700792D89 /* SpoiledUITests */,
+				65C0DE0000000000000000A1 /* SpoiledShare */,
 			);
 		};
 /* End PBXProject section */
@@ -258,6 +347,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		652DAB5B2D26527700792D89 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		65C0DE0000000000000000A7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -288,6 +384,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		65C0DE0000000000000000A5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -300,6 +403,11 @@
 			isa = PBXTargetDependency;
 			target = 652DAB422D26527600792D89 /* Spoiled */;
 			targetProxy = 652DAB5E2D26527700792D89 /* PBXContainerItemProxy */;
+		};
+		65C0DE0000000000000000AC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 65C0DE0000000000000000A1 /* SpoiledShare */;
+			targetProxy = 65C0DE0000000000000000AD /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -430,7 +538,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Spoiled/Spoiled.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"Spoiled/Preview Content\"";
 				DEVELOPMENT_TEAM = VNF829NW96;
 				ENABLE_PREVIEWS = YES;
@@ -446,7 +554,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tomled.Spoiled;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -462,7 +570,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Spoiled/Spoiled.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"Spoiled/Preview Content\"";
 				DEVELOPMENT_TEAM = VNF829NW96;
 				ENABLE_PREVIEWS = YES;
@@ -478,7 +586,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tomled.Spoiled;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -559,6 +667,56 @@
 			};
 			name = Release;
 		};
+		65C0DE0000000000000000A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SpoiledShare/SpoiledShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = VNF829NW96;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpoiledShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Spoiled;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tomled.Spoiled.Share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		65C0DE0000000000000000AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SpoiledShare/SpoiledShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = VNF829NW96;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpoiledShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Spoiled;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tomled.Spoiled.Share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -594,6 +752,15 @@
 			buildConfigurations = (
 				652DAB6E2D26527700792D89 /* Debug */,
 				652DAB6F2D26527700792D89 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		65C0DE0000000000000000A8 /* Build configuration list for PBXNativeTarget "SpoiledShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				65C0DE0000000000000000A9 /* Debug */,
+				65C0DE0000000000000000AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -644,6 +811,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 655F68E82E78DA28002B95D5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		65C0DE0000000000000000AF /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 655F68E12E78D9E7002B95D5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		65C0DE0000000000000000B0 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 655F68E12E78D9E7002B95D5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

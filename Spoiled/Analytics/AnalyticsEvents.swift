@@ -78,6 +78,15 @@ enum AnalyticsEvents {
     static func purchasedGiftIdeasCleared(count: Int) {
         Analytics.logEvent("purchased_gift_ideas_cleared", parameters: ["count": count])
     }
+    static func purchasedWishlistItemsCleared(count: Int, usedCustomCutoff: Bool) {
+        Analytics.logEvent("purchased_wishlist_items_cleared", parameters: [
+            "count": count,
+            "custom_cutoff": usedCustomCutoff ? 1 : 0
+        ])
+    }
+    static func purchasedWishlistItemsRestored() {
+        Analytics.logEvent("purchased_wishlist_items_restored", parameters: nil)
+    }
     static func wishlistItemPurchased(itemId: UUID, context: String) {
         Analytics.logEvent("wishlist_item_purchased", parameters: [
             "item_id": itemId.uuidString,
@@ -91,6 +100,18 @@ enum AnalyticsEvents {
         ])
     }
     static func profileUpdated() { Analytics.logEvent("profile_updated", parameters: nil) }
+    static func notificationPermissionPrompted() {
+        Analytics.logEvent("notification_permission_prompted", parameters: nil)
+    }
+    static func notificationPermissionResult(granted: Bool) {
+        Analytics.logEvent("notification_permission_result", parameters: ["granted": granted ? 1 : 0])
+    }
+    static func birthdayReminderChanged(leadTime: Int, enabled: Bool) {
+        Analytics.logEvent("birthday_reminder_changed", parameters: [
+            "lead_time": leadTime,
+            "enabled": enabled ? 1 : 0
+        ])
+    }
     static func error(code: String, message: String?, context: String) {
         var params: [String: Any] = ["context": context, "code": code]
         if let message { params["message"] = String(message.prefix(100)) }

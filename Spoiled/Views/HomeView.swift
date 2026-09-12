@@ -3,6 +3,11 @@ import SwiftUI
 // MARK: - HomeView
 
 struct HomeView: View {
+    /// Shared with `AppLoadingView` so the gift can fly into the greeting on first load.
+    let giftNamespace: Namespace.ID
+    /// False while the loading cover still owns the gift.
+    var showsGift: Bool = true
+
     @EnvironmentObject private var viewModel: WishlistViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -10,7 +15,11 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 20) {
-                    GreetingHeader(name: viewModel.currentUser?.name)
+                    GreetingHeader(
+                        name: viewModel.currentUser?.name,
+                        giftNamespace: giftNamespace,
+                        showsGift: showsGift
+                    )
 
                     HStack(spacing: 12) {
                         ChristmasCountdownCard(days: daysUntilChristmas)
@@ -42,21 +51,6 @@ struct HomeView: View {
 
     // MARK: - Computed metrics
 
-    /// All unique group members (excluding current user), deduplicated by Firebase UID.
-    private var uniqueMembers: [GroupMember] {
-        var seen = Set<String>()
-        var result: [GroupMember] = []
-        for group in viewModel.groups ?? [] {
-            for member in group.members {
-                guard member.id != viewModel.currentUser?.id,
-                      !seen.contains(member.id) else { continue }
-                seen.insert(member.id)
-                result.append(member)
-            }
-        }
-        return result
-    }
-
     private var giftsIHavePurchasedCount: Int {
         let wishlistCount = viewModel.purchasedWishlistItems.count
         let giftIdeasCount = (viewModel.giftIdeas ?? []).filter { $0.isPurchased }.count
@@ -80,41 +74,16 @@ struct HomeView: View {
         var daysUntil: Int { daysUntilNextBirthday(from: birthdate) }
     }
 
+    /// Everyone with an upcoming birthday, soonest first. The roster is shared with the
+    /// notification scheduler so reminders and this list can never disagree.
     private var upcomingBirthdays: [BirthdayEntry] {
-        var entries: [BirthdayEntry] = []
-        var seenIds = Set<String>()
-
-        // Group members
-        for member in uniqueMembers {
-            if let bd = member.birthdate, !seenIds.contains(member.id) {
-                seenIds.insert(member.id)
-                entries.append(BirthdayEntry(id: member.id, name: member.name, birthdate: bd))
-            }
-        }
-
-        // Kids of group members (deduplicated by kid UUID)
-        for group in viewModel.groups ?? [] {
-            for member in group.members {
-                for kid in member.kids {
-                    let kidKey = "kid-\(kid.id)"
-                    if let bd = kid.birthdate, !seenIds.contains(kidKey) {
-                        seenIds.insert(kidKey)
-                        entries.append(BirthdayEntry(id: kidKey, name: kid.name, birthdate: bd))
-                    }
-                }
-            }
-        }
-
-        // User's own kids
-        for kid in viewModel.kids ?? [] {
-            let kidKey = "kid-\(kid.id)"
-            if !seenIds.contains(kidKey) {
-                seenIds.insert(kidKey)
-                entries.append(BirthdayEntry(id: kidKey, name: kid.name, birthdate: kid.birthdate))
-            }
-        }
-
-        return entries.sorted { $0.daysUntil < $1.daysUntil }
+        BirthdayRoster.people(
+            currentUserId: viewModel.currentUser?.id,
+            groups: viewModel.groups,
+            kids: viewModel.kids
+        )
+        .map { BirthdayEntry(id: $0.id, name: $0.name, birthdate: $0.birthdate) }
+        .sorted { $0.daysUntil < $1.daysUntil }
     }
 
     // MARK: - Birthdays within 2 months
@@ -141,6 +110,8 @@ struct HomeView: View {
 
 private struct GreetingHeader: View {
     let name: String?
+    let giftNamespace: Namespace.ID
+    let showsGift: Bool
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -163,9 +134,18 @@ private struct GreetingHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("\(greeting), \(firstName)! 🎁")
-                .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(.primary)
+            HStack(spacing: 8) {
+                Text("\(greeting), \(firstName)!")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(.primary)
+                // Hidden until the loading cover hands the gift over, so only one copy
+                // of the matched view exists at a time.
+                if showsGift {
+                    Text("🎁")
+                        .font(.system(size: 26))
+                        .matchedGeometryEffect(id: AppLoadingView.giftID, in: giftNamespace)
+                }
+            }
             Text(Self.dateFormatter.string(from: Date()))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -354,16 +334,7 @@ private struct BirthdayRow: View {
     }()
 
     private var birthdateThisYear: Date {
-        let cal = Calendar.current
-        var comps = cal.dateComponents([.month, .day], from: entry.birthdate)
-        comps.year = cal.component(.year, from: Date())
-        let d = cal.date(from: comps) ?? entry.birthdate
-        // If already past, use next year
-        let today = cal.startOfDay(for: Date())
-        if d < today {
-            return cal.date(byAdding: .year, value: 1, to: d) ?? d
-        }
-        return d
+        nextBirthdayDate(from: entry.birthdate)
     }
 
     var body: some View {

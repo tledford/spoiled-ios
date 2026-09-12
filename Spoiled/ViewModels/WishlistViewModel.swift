@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import OSLog
+import Combine
 import FirebaseAnalytics
 
 @MainActor
@@ -23,6 +24,8 @@ class WishlistViewModel: ObservableObject {
 
     private var refreshTimer: Timer?
     private let refreshInterval: TimeInterval = 5 * 60 // 5 minutes
+
+    private var snapshotCancellable: AnyCancellable?
 
     /// Start the auto-refresh timer. Only call when authenticated and app is active.
     func startAutoRefresh() {
@@ -66,13 +69,60 @@ class WishlistViewModel: ObservableObject {
         self.wishlistService = wishlistService
         self.groupsService = groupsService
         self.kidsService = kidsService
+
+        // Mirror the pieces of app state the share extension needs into the App Group so it
+        // can render its form without a network round trip.
+        snapshotCancellable = Publishers.CombineLatest4($currentUser, $kids, $groups, $giftIdeas)
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .sink { user, kids, groups, giftIdeas in
+                guard let user else { return }
+                ShareSnapshotStore.save(ShareSnapshot(user: user,
+                                                      kids: kids ?? [],
+                                                      groups: groups ?? [],
+                                                      giftIdeas: giftIdeas ?? []))
+            }
+    }
+
+    /// Names offered when picking who a gift idea is for. Mirrors what the share extension shows.
+    var personSuggestions: [String] {
+        guard let currentUser else { return [] }
+        return PersonSuggestions.names(currentUserId: currentUser.id,
+                                       groups: groups ?? [],
+                                       giftIdeas: giftIdeas ?? [])
     }
 
     // MARK: - Reset Actions
-    
-    func resetWishlistPurchases() async {
-        guard let user = currentUser else { return }
-        let now = Date()
+
+    /// Stands in for "no cutoff" when writing the reset date back to the API, which cannot store a null.
+    /// Far enough in the past that every purchase stays visible.
+    private static let noPurchaseCutoff = Date(timeIntervalSince1970: 0)
+
+    /// The cutoff in force: purchases made before it are hidden from this user's report and home
+    /// screen. `nil` means the whole purchase history is showing.
+    var purchaseCutoff: Date? {
+        guard let cutoff = currentUser?.wishlistPurchasesResetDate, cutoff > Self.noPurchaseCutoff else { return nil }
+        return cutoff
+    }
+
+    /// Whether any purchases are currently hidden by an earlier clear.
+    var hasPurchaseCutoff: Bool { purchaseCutoff != nil }
+
+    /// The oldest purchase date the report can show.
+    var purchaseVisibilityStartDate: Date {
+        purchaseCutoff ?? Self.noPurchaseCutoff
+    }
+
+    /// How many currently visible purchases a clear with this cutoff would hide.
+    func purchasedWishlistItemCount(before cutoff: Date) -> Int {
+        purchasedWishlistItems.filter { ($0.item.purchasedAt ?? .distantPast) < cutoff }.count
+    }
+
+    /// Hides wishlist purchases made before `cutoff` from this user's report. Defaults to hiding everything
+    /// purchased so far. Does not mark anything unpurchased for other people.
+    @discardableResult
+    func clearWishlistPurchases(before cutoff: Date = Date()) async -> Bool {
+        guard let user = currentUser else { return false }
+        let hiddenCount = purchasedWishlistItemCount(before: cutoff)
         do {
             try await effectiveUsers.updateUser(
                 userId: user.id,
@@ -80,15 +130,45 @@ class WishlistViewModel: ObservableObject {
                 email: user.email,
                 birthdate: user.birthdate,
                 sizes: user.sizes,
-                wishlistPurchasesResetDate: now
+                wishlistPurchasesResetDate: cutoff
             )
             // Update local state immediately
-            currentUser?.wishlistPurchasesResetDate = now
+            currentUser?.wishlistPurchasesResetDate = cutoff
+            AnalyticsEvents.purchasedWishlistItemsCleared(count: hiddenCount,
+                                                          usedCustomCutoff: !Calendar.current.isDateInToday(cutoff))
             // Then refresh everything to be sure
             await load()
+            return true
         } catch {
-            elog("Failed to reset wishlist purchases: \(error)")
+            elog("Failed to clear wishlist purchases: \(error)")
+            AnalyticsEvents.error(code: "wishlist_purchases_clear_failed", message: error.localizedDescription, context: "clear_wishlist_purchases")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            return false
+        }
+    }
+
+    /// Removes the cutoff entirely, bringing back every purchase ever cleared.
+    @discardableResult
+    func showAllPurchases() async -> Bool {
+        guard let user = currentUser, hasPurchaseCutoff else { return false }
+        do {
+            try await effectiveUsers.updateUser(
+                userId: user.id,
+                name: user.name,
+                email: user.email,
+                birthdate: user.birthdate,
+                sizes: user.sizes,
+                wishlistPurchasesResetDate: Self.noPurchaseCutoff
+            )
+            currentUser?.wishlistPurchasesResetDate = Self.noPurchaseCutoff
+            AnalyticsEvents.purchasedWishlistItemsRestored()
+            await load()
+            return true
+        } catch {
+            elog("Failed to restore hidden purchases: \(error)")
+            AnalyticsEvents.error(code: "wishlist_purchases_restore_failed", message: error.localizedDescription, context: "show_all_purchases")
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            return false
         }
     }
 
@@ -664,40 +744,42 @@ class WishlistViewModel: ObservableObject {
         let recipientName: String
     }
     
+    /// Whether a purchase survives the cutoff the user set with their last clear.
+    /// With no clear on record the whole purchase history is shown. Items with no purchase date
+    /// predate the clear as far as we can tell, so a cutoff hides them.
+    private func isPurchaseVisible(_ item: WishlistItem) -> Bool {
+        guard let cutoff = purchaseCutoff else { return true }
+        guard let purchasedAt = item.purchasedAt else { return false }
+        return purchasedAt >= cutoff
+    }
+
     var purchasedWishlistItems: [PurchasedItem] {
         guard let userId = currentUser?.id else { return [] }
         var result: [PurchasedItem] = []
         var seen = Set<UUID>()
-        
-        let sixMonthsAgo = Calendar.current.date(byAdding: .month, value: -6, to: Date()) ?? Date()
-        let effectiveResetDate = currentUser?.wishlistPurchasesResetDate ?? sixMonthsAgo
-        
+
         // Items from group members
         for group in groups ?? [] {
             for member in group.members where member.id != userId {
                 for item in member.wishlistItems where item.isPurchased && item.purchasedBy == userId {
-                    if let purchasedAt = item.purchasedAt, purchasedAt >= effectiveResetDate {
-                        if !seen.contains(item.id) {
-                            seen.insert(item.id)
-                            result.append(PurchasedItem(id: item.id, item: item, recipientName: member.name))
-                        }
+                    if isPurchaseVisible(item), !seen.contains(item.id) {
+                        seen.insert(item.id)
+                        result.append(PurchasedItem(id: item.id, item: item, recipientName: member.name))
                     }
                 }
-                
+
                 // Items from members' kids
                 for kid in member.kids {
                     for item in kid.wishlistItems where item.isPurchased && item.purchasedBy == userId {
-                        if let purchasedAt = item.purchasedAt, purchasedAt >= effectiveResetDate {
-                            if !seen.contains(item.id) {
-                                seen.insert(item.id)
-                                result.append(PurchasedItem(id: item.id, item: item, recipientName: kid.name))
-                            }
+                        if isPurchaseVisible(item), !seen.contains(item.id) {
+                            seen.insert(item.id)
+                            result.append(PurchasedItem(id: item.id, item: item, recipientName: kid.name))
                         }
                     }
                 }
             }
         }
-        
+
         return result.sorted { ($0.item.purchasedAt ?? Date.distantPast) > ($1.item.purchasedAt ?? Date.distantPast) }
     }
 }

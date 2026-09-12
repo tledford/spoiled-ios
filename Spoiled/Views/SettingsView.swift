@@ -1,10 +1,14 @@
 import SwiftUI
 import AuthenticationServices
+import UserNotifications
 
 struct SettingsView: View {
     @EnvironmentObject private var viewModel: WishlistViewModel
     @EnvironmentObject private var auth: AuthViewModel
     @EnvironmentObject private var toast: ToastCenter
+    @EnvironmentObject private var themeStore: ThemeStore
+    @EnvironmentObject private var notificationSettings: BirthdayNotificationSettings
+    @EnvironmentObject private var notifications: BirthdayNotificationCoordinator
     @State private var showingEditProfile = false
     @State private var showDeleteConfirm = false
     @State private var showAppleDeletionSheet = false
@@ -38,6 +42,52 @@ struct SettingsView: View {
                         }
                         .padding(.vertical, 6)
                         .listRowBackground(Color.appSurface)
+                    }
+                }
+
+                Section("Appearance") {
+                    Picker("Theme", selection: $themeStore.theme) {
+                        ForEach(AppTheme.allCases) { theme in
+                            Label(theme.label, systemImage: theme.systemImage)
+                                .tag(theme)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .listRowBackground(Color.appSurface)
+                }
+
+                Section {
+                    ForEach(BirthdayLeadTime.allCases) { leadTime in
+                        Toggle(leadTime.label, isOn: Binding(
+                            get: { notificationSettings.isEnabled(leadTime) },
+                            set: { isOn in
+                                notificationSettings.setEnabled(isOn, for: leadTime)
+                                AnalyticsEvents.birthdayReminderChanged(
+                                    leadTime: leadTime.rawValue, enabled: isOn
+                                )
+                            }
+                        ))
+                        .tint(Color.brandGold)
+                        .disabled(notificationsBlocked)
+                        .listRowBackground(Color.appSurface)
+                    }
+                } header: {
+                    Text("Birthday Reminders")
+                } footer: {
+                    if notificationsBlocked {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Notifications are turned off for Spoiled in iOS Settings.")
+                            Button("Open iOS Settings") {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .font(.footnote)
+                        }
+                        .padding(.top, 4)
+                    } else {
+                        Text("Reminders arrive at 9:17 AM. Your own birthday is never included.")
                     }
                 }
 
@@ -125,6 +175,13 @@ struct SettingsView: View {
             }
         }
         .trackScreen("settings")
+        .task { await notifications.refreshAuthorizationStatus() }
+    }
+
+    /// The toggles are inert while iOS is blocking notifications, so say so instead of
+    /// letting the user flip switches that do nothing.
+    private var notificationsBlocked: Bool {
+        notifications.authorizationStatus == .denied
     }
 }
 

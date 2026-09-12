@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 DEVICE_ID="00008150-000C69961A42401C"
 PROJECT_NAME="Spoiled.xcodeproj"

@@ -221,6 +221,29 @@ struct SizesPillButton: View {
     }
 }
 
+// MARK: - PersonSuggestionMenu
+/// Chevron menu that fills in a person's name from names the user has already used.
+/// Renders nothing when there is nothing to suggest.
+struct PersonSuggestionMenu: View {
+    let suggestions: [String]
+    @Binding var selection: String
+
+    var body: some View {
+        if !suggestions.isEmpty {
+            Menu {
+                ForEach(suggestions, id: \.self) { person in
+                    Button(person) { selection = person }
+                }
+            } label: {
+                Image(systemName: "chevron.down.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.brandGold)
+            }
+            .accessibilityLabel("Choose a name you have used before")
+        }
+    }
+}
+
 // MARK: - GoldBadge
 /// Generic gold-tinted count/label badge.
 struct GoldBadge: View {
