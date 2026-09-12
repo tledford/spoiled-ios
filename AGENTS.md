@@ -36,13 +36,22 @@ To hit the local worker from the app, toggle `AppConfig.swift` (see Environment 
 
 **MVVM + SwiftUI** with Firebase auth and a Cloudflare Worker backend.
 
+### Targets and folders
+
+- **`Spoiled/`** — the app target: entry point, auth, view models, and views.
+- **`Shared/`** — a synchronized folder that is a member of *both* the app and the share
+  extension: models, networking, `AppConfig`, date parsing, the design system, and the
+  App Group plumbing (`SharedContainer`, `ShareSnapshot`, `FirebaseSession`). Anything the
+  extension needs lives here; do not add app-only code (view models, screens) to it.
+- **`SpoiledShare/`** — the share extension target (`dev.tomled.Spoiled.Share`).
+
 ### Layer overview
 
 - **`SpoiledApp.swift`** — App entry point. Owns `WishlistViewModel`, `AuthViewModel`, and `ToastCenter` as `@StateObject`s; injects all three as `@EnvironmentObject` into the hierarchy.
 - **Auth** (`Auth/`) — `AuthStore` protocol → `DefaultAuthStore` (Firebase implementation) → `AuthViewModel` (`@MainActor` `ObservableObject` wrapper used by views). Supports Google Sign-In and Apple Sign-In.
-- **Networking** (`Networking/`) — `APIClient` executes typed `APIRequest` values. Services (`WishlistService`, `GroupsService`, etc.) are thin structs that wrap `APIClient`. All services accept an `APIClient` in `init`, defaulting to an unauthenticated one.
+- **Networking** (`Shared/Networking/`) — `APIClient` executes typed `APIRequest` values. Services (`WishlistService`, `GroupsService`, etc.) are thin structs that wrap `APIClient`. All services accept an `APIClient` in `init`, defaulting to an unauthenticated one.
 - **ViewModel** (`ViewModels/WishlistViewModel.swift`) — Single `@MainActor ObservableObject` that holds all app state (`currentUser`, `groups`, `kids`, `wishlistItems`, `giftIdeas`). After authentication, `configureAuth(using:)` is called to rebuild services with an auth-backed `APIClient`.
-- **Models** (`Models/`) — Plain Swift value types (`WishlistItem`, `Group`, `Kid`, `GiftIdea`, `User`).
+- **Models** (`Shared/Models/`) — Plain Swift value types (`WishlistItem`, `Group`, `Kid`, `GiftIdea`, `User`).
 - **Views** (`Views/`) — SwiftUI views. Consume `WishlistViewModel` and `ToastCenter` via `@EnvironmentObject`.
 
 ### Bootstrap pattern
@@ -55,11 +64,36 @@ Every resource has:
 1. An `API*` struct (e.g., `APIWishlistItem`) used only for decoding — tolerant of null/missing fields.
 2. An app model struct (e.g., `WishlistItem`) used everywhere else.
 
-Conversion happens via `asAppModel()` extension methods in `BootstrapService.swift`. Dates from the API always go through `parseAPIDate()` (`Utils/DateParsing.swift`), which handles ISO8601, `yyyy-MM-dd`, and unix epoch strings.
+Conversion happens via `asAppModel()` extension methods in `BootstrapService.swift`. Dates from the API always go through `parseAPIDate()` (`Shared/Utils/DateParsing.swift`), which handles ISO8601, `yyyy-MM-dd`, and unix epoch strings.
 
 ### 401 auto-retry
 
 `APIClient.execute()` retries once with a force-refreshed Firebase ID token on HTTP 401. If it still fails, it posts `Notification.Name.authUnauthorized`, which `SpoiledApp` listens to in order to sign the user out.
+
+### Share extension
+
+`SpoiledShare` lets the user save a shared page straight to their wishlist, one of their
+kids' wishlists, or a gift idea.
+
+- **Auth** — the extension reads the app's Firebase session out of the shared keychain
+  group `$(AppIdentifierPrefix)dev.tomled.Spoiled`. This works purely through entitlements:
+  Firebase stores the user with no explicit access group, so it lands in each process's
+  default group, and both targets declare that one group. Never call
+  `Auth.auth().useUserAccessGroup(_:)` — it switches to a different keychain item, does not
+  bring the existing user across, and deletes the old one, signing everybody out on update
+  (see the note in `Shared/FirebaseSession.swift`). With no session the extension shows a
+  "sign in first" state instead of failing silently.
+- **App state** — `WishlistViewModel` mirrors the user id, kids, groups, and gift-idea
+  people into the App Group `group.dev.tomled.Spoiled` (`ShareSnapshotStore`) on every
+  state change. The extension reads that for an instant form; if the cache is missing it
+  calls `/bootstrap` itself.
+- **Prefill** — `SharePreprocessor.js` runs inside the Safari page and returns title,
+  description, price, and any selected text. Shares from other apps arrive as a URL or
+  plain text, and `SharedLinkParser` falls back to `LPMetadataProvider` for the title.
+  `SharedTitleCleaner` (in `Shared/`, so it is unit-testable) trims store prefixes and
+  trailing site names. Every parsed field is editable before saving.
+- **Capabilities** — the App Group and Keychain Sharing entitlements are on both targets.
+  A device build needs those capabilities registered for both App IDs.
 
 ## Key Conventions
 

@@ -34,6 +34,9 @@ struct SpoiledApp: App {
     @StateObject private var wishlistViewModel = WishlistViewModel()
     @StateObject private var toastCenter = ToastCenter()
     @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var themeStore = ThemeStore()
+    @StateObject private var notificationSettings = BirthdayNotificationSettings()
+    @StateObject private var notifications = BirthdayNotificationCoordinator()
     @State private var cancellables = Set<AnyCancellable>()
 
     @Environment(\.scenePhase) private var scenePhase
@@ -44,11 +47,16 @@ struct SpoiledApp: App {
             .environmentObject(wishlistViewModel)
             .environmentObject(toastCenter)
             .environmentObject(authViewModel)
+            .environmentObject(themeStore)
+            .environmentObject(notificationSettings)
+            .environmentObject(notifications)
+            .preferredColorScheme(themeStore.colorScheme)
             .onReceive(NotificationCenter.default.publisher(for: .authUnauthorized)) { _ in
                 authViewModel.signOut()
                 toastCenter.info("Session expired. Please sign in again.")
             }
             .onAppear {
+                notifications.attach(viewModel: wishlistViewModel, settings: notificationSettings)
                 if case .authenticated = authViewModel.state {
                     wishlistViewModel.configureAuth(using: authViewModel)
                     wishlistViewModel.startAutoRefresh()
@@ -60,12 +68,18 @@ struct SpoiledApp: App {
                     wishlistViewModel.startAutoRefresh()
                 } else {
                     wishlistViewModel.stopAutoRefresh()
+                    ShareSnapshotStore.clear()
+                    // The view model keeps the previous user's roster in memory, so their
+                    // reminders would keep firing unless we drop them here.
+                    Task { await notifications.cancelAll() }
                 }
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active, case .authenticated = authViewModel.state {
                     Task { await wishlistViewModel.load() }
                     wishlistViewModel.startAutoRefresh()
+                    // Picks up a permission change made in iOS Settings while we were away.
+                    Task { await notifications.refreshAuthorizationStatus() }
                 } else if newPhase == .background || newPhase == .inactive {
                     wishlistViewModel.stopAutoRefresh()
                 }

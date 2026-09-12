@@ -21,7 +21,8 @@ struct AddGiftIdeaView: View {
                                            urlString: $urlString,
                                            notes: $notes,
                                            isPurchased: $isPurchased,
-                                           showPurchasedToggle: true)
+                                           showPurchasedToggle: true,
+                                           personSuggestions: viewModel.personSuggestions)
                             .spoiledCard()
                     }
                 }

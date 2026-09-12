@@ -8,26 +8,32 @@ struct GiftIdeaFormFields: View {
     @Binding var notes: String
     @Binding var isPurchased: Bool
     var showPurchasedToggle: Bool
+    var personSuggestions: [String]
 
     init(personName: Binding<String>,
          giftName: Binding<String>,
          urlString: Binding<String>,
          notes: Binding<String>,
          isPurchased: Binding<Bool>,
-         showPurchasedToggle: Bool = true) {
+         showPurchasedToggle: Bool = true,
+         personSuggestions: [String] = []) {
         self._personName = personName
         self._giftName = giftName
         self._urlString = urlString
         self._notes = notes
         self._isPurchased = isPurchased
         self.showPurchasedToggle = showPurchasedToggle
+        self.personSuggestions = personSuggestions
     }
 
     var body: some View {
         VStack(spacing: 0) {
             field(label: "Person's Name") {
-                TextField("", text: $personName)
-                    .textInputAutocapitalization(.words)
+                HStack(spacing: 8) {
+                    TextField("", text: $personName)
+                        .textInputAutocapitalization(.words)
+                    PersonSuggestionMenu(suggestions: personSuggestions, selection: $personName)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)

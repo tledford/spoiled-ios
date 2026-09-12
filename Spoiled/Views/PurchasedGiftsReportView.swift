@@ -2,8 +2,10 @@ import SwiftUI
 
 struct PurchasedGiftsReportView: View {
     @EnvironmentObject private var viewModel: WishlistViewModel
+    @EnvironmentObject private var toastCenter: ToastCenter
     @Environment(\.dismiss) private var dismiss
-    @State private var showingClearConfirmation = false
+    @State private var showingClearSheet = false
+    @State private var isRestoring = false
 
     // Wishlist items grouped by recipient name, sorted by purchasedAt asc within each group.
     private var wishlistItemsByPerson: [(name: String, items: [WishlistViewModel.PurchasedItem])] {
@@ -31,19 +33,86 @@ struct PurchasedGiftsReportView: View {
     }
 
     var body: some View {
+        content
+        .background(Color.appBackground.ignoresSafeArea())
+        .navigationTitle("Purchased Gifts")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        showingClearSheet = true
+                    } label: {
+                        Label("Clear Purchased Wishlist Items…", systemImage: "eraser")
+                    }
+                    .disabled(viewModel.purchasedWishlistItems.isEmpty)
+
+                    if viewModel.hasPurchaseCutoff {
+                        Button {
+                            Task { await showAll() }
+                        } label: {
+                            Label("Show All Purchases", systemImage: "eye")
+                        }
+                        .disabled(isRestoring)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .navButton(isIcon: true)
+                }
+            }
+        }
+        .sheet(isPresented: $showingClearSheet) {
+            ClearPurchasedItemsView()
+        }
+        .trackScreen("purchased_gifts_report")
+    }
+
+    @MainActor
+    private func showAll() async {
+        isRestoring = true
+        defer { isRestoring = false }
+        let ok = await viewModel.showAllPurchases()
+        toastCenter.show(ok ? Toast(message: "Showing all purchases", style: .success, duration: 5.0)
+                            : Toast(message: "Couldn't restore purchases", style: .error, duration: 5.0))
+    }
+
+    @ViewBuilder
+    private var cutoffBanner: some View {
+        if let cutoff = viewModel.purchaseCutoff {
+            PurchaseCutoffBanner(cutoff: cutoff)
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         SwiftUI.Group {
             if !hasAnyPurchases {
                 ScrollView {
-                    EmptyStateView(
-                        systemImage: "gift.fill",
-                        title: "No purchases yet",
-                        subtitle: "Gifts you've bought for others will appear here."
-                    )
-                    .padding(.top, 40)
+                    VStack(spacing: 0) {
+                        cutoffBanner
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                        EmptyStateView(
+                            systemImage: "gift.fill",
+                            title: "No purchases yet",
+                            subtitle: "Gifts you've bought for others will appear here."
+                        )
+                        .padding(.top, 40)
+                    }
                 }
                 .background(Color.appBackground.ignoresSafeArea())
             } else {
                 List {
+                    if viewModel.hasPurchaseCutoff {
+                        Section {
+                            cutoffBanner
+                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        }
+                        .listSectionSpacing(4)
+                    }
+
                     // MARK: Wishlist Items
                     Section(header: PurchaseCategoryHeader(title: "Wishlist Items")) {
                         EmptyView()
@@ -100,38 +169,40 @@ struct PurchasedGiftsReportView: View {
                 .background(Color.appBackground.ignoresSafeArea())
             }
         }
-        .navigationTitle("Purchased Gifts")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button(role: .destructive) {
-                        showingClearConfirmation = true
-                    } label: {
-                        Label("Clear Purchased Wishlist Items", systemImage: "eraser")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .navButton(isIcon: true)
-                }
-            }
-        }
-        .alert("Clear Wishlist Items?", isPresented: $showingClearConfirmation) {
-            Button("Clear", role: .destructive) {
-                Task {
-                    await viewModel.resetWishlistPurchases()
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        }
- message: {
-            Text("This will hide all current wishlist purchases from this report and the home screen. It will NOT mark the items as unpurchased for others.")
-        }
-        .trackScreen("purchased_gifts_report")
     }
 }
 
 // MARK: - Supporting Views
+
+private struct PurchaseCutoffBanner: View {
+    let cutoff: Date
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "eye.slash")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.brandGold)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Hiding purchases before \(cutoff.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("Hidden from your report only. Show All Purchases brings them back.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.appSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.brandGold.opacity(0.35), lineWidth: 1)
+        }
+    }
+}
 
 private struct PurchaseCategoryHeader: View {
     let title: String
