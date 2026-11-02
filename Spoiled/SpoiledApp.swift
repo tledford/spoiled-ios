@@ -38,6 +38,8 @@ struct SpoiledApp: App {
     @StateObject private var notificationSettings = BirthdayNotificationSettings()
     @StateObject private var notifications = BirthdayNotificationCoordinator()
     @State private var cancellables = Set<AnyCancellable>()
+    /// An invite link can arrive before sign-in, so it waits here until `ContentView` can show it.
+    @AppStorage("pendingInviteCode") private var pendingInviteCode = ""
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -51,6 +53,14 @@ struct SpoiledApp: App {
             .environmentObject(notificationSettings)
             .environmentObject(notifications)
             .preferredColorScheme(themeStore.colorScheme)
+            .onOpenURL { url in
+                if let code = InviteLink.code(from: url) {
+                    pendingInviteCode = code
+                } else {
+                    // Having this modifier can stop URLs reaching the app delegate.
+                    _ = GIDSignIn.sharedInstance.handle(url)
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .authUnauthorized)) { _ in
                 authViewModel.signOut()
                 toastCenter.info("Session expired. Please sign in again.")

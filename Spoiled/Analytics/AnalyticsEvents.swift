@@ -23,6 +23,15 @@ enum AnalyticsEvents {
     static func groupDeleted(groupId: UUID) {
         Analytics.logEvent("group_deleted", parameters: ["group_id": groupId.uuidString])
     }
+    static func groupInvitationAnswered(groupId: UUID, accepted: Bool) {
+        Analytics.logEvent(accepted ? "group_invitation_accepted" : "group_invitation_declined", parameters: ["group_id": groupId.uuidString])
+    }
+    static func groupJoinedWithCode() {
+        Analytics.logEvent("group_joined_with_code", parameters: nil)
+    }
+    static func groupLeft(groupId: UUID) {
+        Analytics.logEvent("group_left", parameters: ["group_id": groupId.uuidString])
+    }
     static func groupMemberInvited(groupId: UUID) {
         Analytics.logEvent("group_member_invited", parameters: ["group_id": groupId.uuidString])
     }

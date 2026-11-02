@@ -53,10 +53,9 @@ struct EditProfileView: View {
                             Divider().padding(.leading, 16)
                             
                             fieldRow(label: "Email") {
-                                TextField("Enter email", text: $email)
-                                    .textInputAutocapitalization(.never)
-                                    .keyboardType(.emailAddress)
-                                    .autocorrectionDisabled()
+                                // Comes from the sign-in provider, so people can't claim someone else's address.
+                                Text(email)
+                                    .foregroundStyle(.secondary)
                                     .multilineTextAlignment(.trailing)
                             }
                             
@@ -112,7 +111,7 @@ struct EditProfileView: View {
                         Text(isSaving ? "Saving…" : "Save")
                             .navButton(isIcon: false)
                     }
-                    .disabled(isSaving || name.isEmpty || email.isEmpty)
+                    .disabled(isSaving || name.isEmpty)
                 }
             }
         }

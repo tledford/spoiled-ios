@@ -62,12 +62,14 @@ extension Data {
         Data(#"{"error":{"code":"\#(code)","message":"\#(message)"}}"#.utf8)
     }
 
-    /// A minimal successful `/bootstrap` response for the given user.
-    static func bootstrap(userId: String = "me", name: String = "Me") -> Data {
-        Data("""
+    /// A minimal successful `/bootstrap` response. `groups` and `invitations` are JSON arrays, and
+    /// leaving `invitations` out matches a server from before they existed.
+    static func bootstrap(userId: String = "me", name: String = "Me", groups: String = "[]", invitations: String? = nil) -> Data {
+        let invitationsField = invitations.map { #","invitations":\#($0)"# } ?? ""
+        return Data("""
         {"currentUser":{"id":"\(userId)","name":"\(name)","email":"\(userId)@example.com","birthdate":null,
         "sizes":{"shirt":"","pants":"","shoes":"","sweatshirt":"","hat":""},"wishlistPurchasesResetDate":null},
-        "groups":[],"kids":[],"wishlistItems":[],"giftIdeas":[]}
+        "groups":\(groups),"kids":[],"wishlistItems":[],"giftIdeas":[]\(invitationsField)}
         """.utf8)
     }
 }

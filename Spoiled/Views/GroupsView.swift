@@ -6,13 +6,35 @@ struct GroupsView: View {
     @EnvironmentObject private var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
     @State private var showingAddGroupSheet = false
+    @State private var showingJoinSheet = false
     @State private var showDeleteAlert = false
     @State private var groupToDelete: Group?
+    @State private var invitationToReview: GroupInvitation?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    if !viewModel.groupInvitations.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            AppSectionHeader(icon: "envelope.fill", title: "Invitations")
+                            VStack(spacing: 0) {
+                                ForEach(viewModel.groupInvitations) { invitation in
+                                    Button {
+                                        invitationToReview = invitation
+                                    } label: {
+                                        GroupInvitationRow(invitation: invitation)
+                                    }
+                                    .buttonStyle(.plain)
+                                    if invitation.id != viewModel.groupInvitations.last?.id {
+                                        Divider().padding(.leading, 16)
+                                    }
+                                }
+                            }
+                            .spoiledCard()
+                        }
+                    }
+
                     if let groups = viewModel.groups, !groups.isEmpty {
                         ForEach(groups) { group in
                             NavigationLink(destination: GroupDetailView(group: group)) {
@@ -50,8 +72,17 @@ struct GroupsView: View {
             .refreshable { await viewModel.refreshAll() }
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingAddGroupSheet = true
+                    Menu {
+                        Button {
+                            showingAddGroupSheet = true
+                        } label: {
+                            Label("New Group", systemImage: "plus")
+                        }
+                        Button {
+                            showingJoinSheet = true
+                        } label: {
+                            Label("Join with Code", systemImage: "ticket")
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .navButton()
@@ -60,6 +91,14 @@ struct GroupsView: View {
             }
             .sheet(isPresented: $showingAddGroupSheet) {
                 AddGroupView()
+            }
+            .sheet(isPresented: $showingJoinSheet) {
+                JoinGroupView()
+                    .toast(toastCenter)
+            }
+            .sheet(item: $invitationToReview) { invitation in
+                InvitationReviewView(invitation: invitation)
+                    .toast(toastCenter)
             }
             .alert("Delete Group?", isPresented: $showDeleteAlert) {
                 Button("Cancel", role: .cancel) { groupToDelete = nil }
@@ -128,7 +167,9 @@ struct GroupDetailView: View {
     let group: Group
     @EnvironmentObject private var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
+    @Environment(\.dismiss) private var dismiss
     @State private var showDeleteAlert = false
+    @State private var showLeaveAlert = false
     @State private var sizesToShow: IdentSizes? = nil
     @State private var hidePurchased: Bool = false
 
@@ -266,11 +307,33 @@ struct GroupDetailView: View {
                         }
                         .disabled(viewModel.deletingGroupIds.contains(group.id))
                     }
+
+                    Button(role: .destructive) {
+                        showLeaveAlert = true
+                    } label: {
+                        Label("Leave Group", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
                 } label: {
                     Image(systemName: "ellipsis")
                         .navButton()
                 }
             }
+        }
+        .alert("Leave \(group.name)?", isPresented: $showLeaveAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Leave", role: .destructive) {
+                Task {
+                    let ok = await viewModel.leaveGroup(group)
+                    if ok {
+                        toastCenter.success("You left \(group.name)")
+                        dismiss()
+                    } else {
+                        toastCenter.error(viewModel.errorMessage ?? "Failed to leave group")
+                    }
+                }
+            }
+        } message: {
+            Text("People in this group will no longer see your details or anything you've shared with it. You'd need a new invitation to come back.")
         }
         .alert("Delete Group?", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) { }

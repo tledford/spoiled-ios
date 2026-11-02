@@ -104,8 +104,8 @@ final class ShareComposerModel: ObservableObject {
         // No cache yet (first run after installing this version). Bootstrap directly.
         let client = APIClient(tokenProvider: FirebaseSession.tokenProvider)
         do {
-            let data = try await BootstrapService(client: client).load()
-            let snapshot = ShareSnapshot(user: data.0, kids: data.2, groups: data.1, giftIdeas: data.4)
+            let data = try await BootstrapService(client: client).load().data
+            let snapshot = ShareSnapshot(user: data.user, kids: data.kids, groups: data.groups, giftIdeas: data.giftIdeas)
             ShareSnapshotStore.save(snapshot)
             return snapshot
         } catch {

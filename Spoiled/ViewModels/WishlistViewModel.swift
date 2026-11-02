@@ -11,6 +11,7 @@ class WishlistViewModel: ObservableObject {
     @Published var groups: [Group]?
     @Published var wishlistItems: [WishlistItem]?
     @Published var giftIdeas: [GiftIdea]?
+    @Published var groupInvitations: [GroupInvitation] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var isSavingGiftIdea: Bool = false
@@ -211,6 +212,7 @@ class WishlistViewModel: ObservableObject {
         kids = nil
         wishlistItems = nil
         giftIdeas = nil
+        groupInvitations = []
         isLoading = false
         errorMessage = nil
 
@@ -258,16 +260,17 @@ class WishlistViewModel: ObservableObject {
 //            self.wishlistItems = mockData.wishlistItems
 //            self.giftIdeas = mockData.giftIdeas
 //            #else
-            let data = try await effectiveBootstrap.load()
+            let (data, isNewUser) = try await effectiveBootstrap.load()
             guard generation == loadGeneration else { return }
 //            #endif
-            dlog("Bootstrap success: user=\(data.0.id) groups=\(data.1.count) kids=\(data.2.count) myItems=\(data.3.count) giftIdeas=\(data.4.count)")
-            self.currentUser = data.0
-            self.groups = data.1
-            self.kids = data.2
-            self.wishlistItems = data.3
-            self.giftIdeas = data.4
-            if data.5 {
+            dlog("Bootstrap success: user=\(data.user.id) groups=\(data.groups.count) kids=\(data.kids.count) myItems=\(data.wishlistItems.count) giftIdeas=\(data.giftIdeas.count)")
+            self.currentUser = data.user
+            self.groups = data.groups
+            self.kids = data.kids
+            self.wishlistItems = data.wishlistItems
+            self.giftIdeas = data.giftIdeas
+            self.groupInvitations = data.invitations
+            if isNewUser {
                 // newly created account; surface a flag so UI can navigate to EditProfileView
                 NotificationCenter.default.post(name: Notification.Name("NewUserCreated"), object: nil)
                 AnalyticsEvents.signUp(method: AnalyticsAuthProvider.last())
@@ -641,6 +644,73 @@ class WishlistViewModel: ObservableObject {
         }
     }
     
+    /// Accepts or declines an invitation, then reloads so a joined group shows up.
+    func respondToInvitation(_ invitation: GroupInvitation, accept: Bool) async -> Bool {
+        do {
+            try await effectiveGroups.respondToInvitation(id: invitation.id, accept: accept)
+            AnalyticsEvents.groupInvitationAnswered(groupId: invitation.groupId, accepted: accept)
+            await load()
+            return true
+        } catch {
+            AnalyticsEvents.error(code: "group_invitation_answer_failed", message: error.localizedDescription, context: "respond_to_invitation")
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            return false
+        }
+    }
+
+    /// What a code leads to, or nil with `errorMessage` set. Nobody joins anything yet.
+    func previewInviteCode(_ code: String) async -> InviteCodePreview? {
+        do {
+            return try await effectiveGroups.previewInviteCode(Self.tidied(code: code))
+        } catch {
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            return nil
+        }
+    }
+
+    func joinGroup(code: String) async -> Bool {
+        do {
+            try await effectiveGroups.acceptInviteCode(Self.tidied(code: code))
+            AnalyticsEvents.groupJoinedWithCode()
+            await load()
+            return true
+        } catch {
+            AnalyticsEvents.error(code: "group_join_with_code_failed", message: error.localizedDescription, context: "join_group")
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            return false
+        }
+    }
+
+    /// The group's invite code. Pass `replacing` to make the current one stop working.
+    func inviteCode(for group: Group, replacing: Bool = false) async -> GroupInviteCode? {
+        do {
+            return try await effectiveGroups.inviteCode(groupId: group.id, replacing: replacing)
+        } catch {
+            AnalyticsEvents.error(code: "group_invite_code_failed", message: error.localizedDescription, context: "invite_code")
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            return nil
+        }
+    }
+
+    func leaveGroup(_ group: Group) async -> Bool {
+        guard let userId = currentUser?.id else { return false }
+        do {
+            try await effectiveGroups.removeMember(groupId: group.id, userId: userId)
+            groups?.removeAll(where: { $0.id == group.id })
+            AnalyticsEvents.groupLeft(groupId: group.id)
+            return true
+        } catch {
+            AnalyticsEvents.error(code: "group_leave_failed", message: error.localizedDescription, context: "leave_group")
+            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            return false
+        }
+    }
+
+    /// A typed code goes into a URL path, so nothing in it can be allowed to change that path.
+    private static func tidied(code: String) -> String {
+        code.filter { $0.isLetter || $0.isNumber }
+    }
+
     func addMemberToGroup(email: String, to group: Group) async -> Bool {
         do {
             try await effectiveGroups.addMember(groupId: group.id, email: email)

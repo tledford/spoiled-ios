@@ -70,6 +70,10 @@ Conversion happens via `asAppModel()` extension methods in `BootstrapService.swi
 
 `WishlistItem` has a `quantityDesired` (default 1, up to 99) and `purchases`, one entry per person who bought some. `isPurchased` is computed: the total bought has reached `quantityDesired`. Members change only their own count, through `WishlistViewModel.setItemPurchaseQuantity`. `purchases` is only populated on group copies of an item; the API sends it empty on the owner's own copies, so owners can't see what's been bought. Check `isInGroupView` before showing purchase state.
 
+### Joining groups
+
+Nobody joins a group without agreeing. Admins invite by email, which only creates a pending invitation, or share the group's invite link. An email invitation appears in `WishlistViewModel.groupInvitations` when it matches the verified address on the user's token, and Spoiled sends no email. Invite links (`https://prod.tomled.dev/invite/<code>`) arrive through `.onOpenURL` in `SpoiledApp` and are held in the `pendingInviteCode` app storage until `ContentView` can show `JoinGroupView`, so they survive sign-in. Someone installing the app from the link's landing page types the code instead, since there are no deferred deep links. Every path ends at a screen saying what joining shares (`GroupSharingNotice`).
+
 ### 401 auto-retry
 
 `APIClient.execute()` retries once with a force-refreshed Firebase ID token on HTTP 401. It posts `Notification.Name.authUnauthorized`, which `SpoiledApp` listens to in order to sign the user out, only when the session has really ended: the refreshed token was rejected too, or Firebase reports the session is over (`FirebaseSession.isSessionOver`).

@@ -8,6 +8,7 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showEditProfile = false
     @State private var showNotificationPrimer = false
+    @AppStorage("pendingInviteCode") private var pendingInviteCode = ""
     @Namespace private var giftNamespace
 
     /// Held for a beat so the cover cannot flash by on a fast connection.
@@ -61,6 +62,7 @@ struct ContentView: View {
             Tab("Groups", systemImage: "person.3.fill") {
                 GroupsView()
             }
+            .badge(wishlistViewModel.groupInvitations.count)
             Tab("Gift Ideas", systemImage: "lightbulb.fill") {
                 GiftIdeasView()
             }
@@ -82,6 +84,12 @@ struct ContentView: View {
             toastCenter.info("Welcome! Let's finish setting up your profile.")
             showEditProfile = true
         }
+        .sheet(isPresented: showInviteLink) {
+            JoinGroupView(code: pendingInviteCode)
+                .environmentObject(wishlistViewModel)
+                .environmentObject(toastCenter)
+                .toast(toastCenter)
+        }
         .sheet(isPresented: $showNotificationPrimer) {
             BirthdayNotificationPrimerSheet()
                 .environmentObject(notificationSettings)
@@ -93,6 +101,14 @@ struct ContentView: View {
             Task { await maybePrimeNotifications() }
         }
         .task { await maybePrimeNotifications() }
+    }
+
+    /// An invite link is waiting, and there's a signed-in user to act on it.
+    private var showInviteLink: Binding<Bool> {
+        Binding(
+            get: { !pendingInviteCode.isEmpty && wishlistViewModel.currentUser != nil },
+            set: { if !$0 { pendingInviteCode = "" } }
+        )
     }
 
     private func maybePrimeNotifications() async {
