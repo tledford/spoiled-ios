@@ -8,6 +8,7 @@ struct AddWishlistItemView: View {
     @State private var name = ""
     @State private var description = ""
     @State private var linkString = ""
+    @State private var quantityDesired = 1
     @State private var selectedGroupIds: Set<UUID> = []
     @State private var selectedKid: Kid?
 
@@ -56,6 +57,10 @@ struct AddWishlistItemView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
+
+                            Divider().padding(.leading, 16)
+
+                            QuantityStepperRow(quantity: $quantityDesired)
                         }
                         .spoiledCard()
                     }
@@ -178,6 +183,7 @@ struct AddWishlistItemView: View {
             name: name,
             description: description,
             link: URL(string: linkString),
+            quantityDesired: quantityDesired,
             assignedGroupIds: Array(selectedGroupIds)
         )
         let ok = await viewModel.addWishlistItem(item, kidId: selectedKid?.id)

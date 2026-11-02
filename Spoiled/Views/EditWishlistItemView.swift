@@ -8,6 +8,7 @@ struct EditWishlistItemView: View {
     @State private var name: String
     @State private var description: String
     @State private var linkString: String
+    @State private var quantityDesired: Int
     @State private var selectedGroupIds: Set<UUID>
 
     let item: WishlistItem
@@ -19,6 +20,7 @@ struct EditWishlistItemView: View {
         _name = State(initialValue: item.name)
         _description = State(initialValue: item.description)
         _linkString = State(initialValue: item.link?.absoluteString ?? "")
+        _quantityDesired = State(initialValue: item.quantityDesired)
         _selectedGroupIds = State(initialValue: Set(item.assignedGroupIds))
     }
 
@@ -65,6 +67,10 @@ struct EditWishlistItemView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
+
+                            Divider().padding(.leading, 16)
+
+                            QuantityStepperRow(quantity: $quantityDesired)
                         }
                         .spoiledCard()
                     }
@@ -149,6 +155,7 @@ struct EditWishlistItemView: View {
             name: name,
             description: description,
             link: URL(string: linkString),
+            quantityDesired: quantityDesired,
             assignedGroupIds: Array(selectedGroupIds),
             kidId: kidId
         )

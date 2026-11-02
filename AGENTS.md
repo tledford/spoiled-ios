@@ -66,6 +66,10 @@ Every resource has:
 
 Conversion happens via `asAppModel()` extension methods in `BootstrapService.swift`. Dates from the API always go through `parseAPIDate()` (`Shared/Utils/DateParsing.swift`), which handles ISO8601, `yyyy-MM-dd`, and unix epoch strings.
 
+### Purchases and quantities
+
+`WishlistItem` has a `quantityDesired` (default 1, up to 99) and `purchases`, one entry per person who bought some. `isPurchased` is computed: the total bought has reached `quantityDesired`. Members change only their own count, through `WishlistViewModel.setItemPurchaseQuantity`. `purchases` is only populated on group copies of an item; the API sends it empty on the owner's own copies, so owners can't see what's been bought. Check `isInGroupView` before showing purchase state.
+
 ### 401 auto-retry
 
 `APIClient.execute()` retries once with a force-refreshed Firebase ID token on HTTP 401. If it still fails, it posts `Notification.Name.authUnauthorized`, which `SpoiledApp` listens to in order to sign the user out.

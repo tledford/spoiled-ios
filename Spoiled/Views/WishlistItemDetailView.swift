@@ -18,6 +18,11 @@ struct WishlistItemDetailView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var purchaseBounce = false
+    @State private var isSavingPurchase = false
+    /// What the stepper shows until its change has saved. Nil when it matches the saved count.
+    @State private var draftPurchaseQuantity: Int?
+    @State private var purchaseSaveDelay: Task<Void, Never>?
+    @State private var lastPurchaseSave: Task<Void, Never>?
 
     private var currentItem: WishlistItem {
         if isInGroupView, let groupId, let gi = viewModel.groups?.firstIndex(where: { $0.id == groupId }) {
@@ -40,6 +45,15 @@ struct WishlistItemDetailView: View {
         viewModel.groups?.filter { currentItem.assignedGroupIds.contains($0.id) } ?? []
     }
 
+    private var myPurchasedQuantity: Int {
+        viewModel.currentUser.map { currentItem.quantityPurchased(by: $0.id) } ?? 0
+    }
+
+    /// Everything's been bought and none of it by this user, so they have nothing to change.
+    private var purchasedByOthers: Bool {
+        currentItem.isPurchased && myPurchasedQuantity == 0
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -59,6 +73,22 @@ struct WishlistItemDetailView: View {
                                     .textCase(.uppercase)
                                     .tracking(0.5)
                                 Text(currentItem.description)
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+                    }
+
+                    // Quantity (own wishlist)
+                    if !isInGroupView && currentItem.quantityDesired > 1 {
+                        detailCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Label("Quantity", systemImage: "number")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Color.brandGold)
+                                    .textCase(.uppercase)
+                                    .tracking(0.5)
+                                Text("\(currentItem.quantityDesired)")
                                     .font(.body)
                                     .foregroundStyle(.primary)
                             }
@@ -98,54 +128,12 @@ struct WishlistItemDetailView: View {
                         }
                     }
 
-                    // Purchase button (group view)
+                    // Purchase controls (group view)
                     if isInGroupView {
-                        let purchasedByOther: Bool = {
-                            guard currentItem.isPurchased, let purchaser = currentItem.purchasedBy,
-                                  purchaser != viewModel.currentUser?.id else { return false }
-                            return true
-                        }()
-
-                        Button {
-                            viewModel.toggleItemPurchased(currentItem, groupId: groupId, groupMemberId: groupMemberId, kidId: kidId)
-                        } label: {
-                            HStack(spacing: 12) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(currentItem.isPurchased
-                                         ? (purchasedByOther ? "Already Purchased" : "Mark as Not Purchased")
-                                         : "Mark as Purchased")
-                                        .font(.system(size: 16, weight: .semibold))
-                                    if purchasedByOther {
-                                        Text("Purchased by another group member")
-                                            .font(.caption)
-                                            .foregroundStyle(.white.opacity(0.7))
-                                    }
-                                }
-                                Spacer()
-                                Image(systemName: currentItem.isPurchased ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 24))
-                                    .scaleEffect(purchaseBounce ? 1.35 : 1.0)
-                                    .animation(
-                                        reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.45),
-                                        value: purchaseBounce
-                                    )
-                            }
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 16)
-                            .foregroundStyle(.white)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(currentItem.isPurchased
-                                          ? Color.green
-                                          : Color.accentColor)
-                                    .opacity(purchasedByOther ? 0.55 : 1.0)
-                            )
-                        }
-                        .disabled(purchasedByOther)
-                        .onChange(of: currentItem.isPurchased) { _, _ in
-                            guard !reduceMotion else { return }
-                            purchaseBounce = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { purchaseBounce = false }
+                        if currentItem.quantityDesired > 1 {
+                            multipleQuantityPurchaseControls
+                        } else {
+                            singleQuantityPurchaseButton
                         }
                     }
 
@@ -208,6 +196,118 @@ struct WishlistItemDetailView: View {
         .trackScreen(isInGroupView
                      ? "group_wishlist_item_detail"
                      : (kidId == nil ? "wishlist_item_detail" : "kid_wishlist_item_detail"))
+    }
+
+    /// Progress plus a stepper for this user's own count. Stepping saves by itself.
+    @ViewBuilder
+    private var multipleQuantityPurchaseControls: some View {
+        let mine = myPurchasedQuantity
+        let maximum = mine + currentItem.remainingQuantity
+        let selected = min(draftPurchaseQuantity ?? mine, maximum)
+        let bought = currentItem.purchasedQuantity - mine + selected
+
+        detailCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Purchases", systemImage: "gift.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.brandGold)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                HStack {
+                    Text("\(min(bought, currentItem.quantityDesired)) of \(currentItem.quantityDesired) purchased")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    if bought >= currentItem.quantityDesired {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+
+                if maximum > 0 {
+                    Divider()
+                    Stepper(value: Binding(get: { selected }, set: { choosePurchaseQuantity($0) }), in: 0...maximum) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("How many did you purchase?")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text("\(selected)")
+                                .font(.title3.weight(.semibold))
+                        }
+                    }
+                } else {
+                    Text("Purchased by other group members")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var singleQuantityPurchaseButton: some View {
+        Button {
+            savePurchase(quantity: currentItem.isPurchased ? 0 : 1)
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(currentItem.isPurchased
+                         ? (purchasedByOthers ? "Already Purchased" : "Mark as Not Purchased")
+                         : "Mark as Purchased")
+                        .font(.system(size: 16, weight: .semibold))
+                    if purchasedByOthers {
+                        Text("Purchased by another group member")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                }
+                Spacer()
+                Image(systemName: currentItem.isPurchased ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 24))
+                    .scaleEffect(purchaseBounce ? 1.35 : 1.0)
+                    .animation(
+                        reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.45),
+                        value: purchaseBounce
+                    )
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .foregroundStyle(.white)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(currentItem.isPurchased ? Color.green : Color.accentColor)
+                    .opacity(purchasedByOthers ? 0.55 : 1.0)
+            )
+        }
+        .disabled(purchasedByOthers || isSavingPurchase)
+        .onChange(of: currentItem.isPurchased) { _, _ in
+            guard !reduceMotion else { return }
+            purchaseBounce = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { purchaseBounce = false }
+        }
+    }
+
+    /// Shows the new count right away and saves once the tapping stops, so a run of taps sends one request.
+    private func choosePurchaseQuantity(_ quantity: Int) {
+        draftPurchaseQuantity = quantity
+        purchaseSaveDelay?.cancel()
+        purchaseSaveDelay = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            savePurchase(quantity: quantity)
+        }
+    }
+
+    private func savePurchase(quantity: Int) {
+        isSavingPurchase = true
+        let previousSave = lastPurchaseSave
+        lastPurchaseSave = Task {
+            // One at a time, so the last count chosen is the one that sticks.
+            await previousSave?.value
+            let ok = await viewModel.setItemPurchaseQuantity(currentItem, quantity: quantity, groupId: groupId, groupMemberId: groupMemberId, kidId: kidId)
+            if !ok { toastCenter.error(viewModel.errorMessage ?? "Couldn't update your purchase") }
+            if draftPurchaseQuantity == quantity { draftPurchaseQuantity = nil }
+            isSavingPurchase = false
+        }
     }
 
     @ViewBuilder

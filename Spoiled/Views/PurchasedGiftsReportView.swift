@@ -12,7 +12,7 @@ struct PurchasedGiftsReportView: View {
         let grouped = Dictionary(grouping: viewModel.purchasedWishlistItems, by: \.recipientName)
         return grouped.keys.sorted().map { name in
             let sorted = (grouped[name] ?? []).sorted {
-                ($0.item.purchasedAt ?? .distantPast) < ($1.item.purchasedAt ?? .distantPast)
+                ($0.purchasedAt ?? .distantPast) < ($1.purchasedAt ?? .distantPast)
             }
             return (name: name, items: sorted)
         }
@@ -248,13 +248,21 @@ private struct WishlistPurchaseRow: View {
                 .font(.system(size: 15, weight: .semibold))
 
             HStack(spacing: 6) {
+                if purchased.quantity > 1 {
+                    Text("Qty \(purchased.quantity)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    if purchased.item.price != nil {
+                        Text("•").foregroundStyle(.secondary)
+                    }
+                }
                 if let price = purchased.item.price {
                     Text("$\(price, specifier: "%.2f")")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
-                if let date = purchased.item.purchasedAt {
-                    if purchased.item.price != nil {
+                if let date = purchased.purchasedAt {
+                    if purchased.item.price != nil || purchased.quantity > 1 {
                         Text("•").foregroundStyle(.secondary)
                     }
                     Text(date, style: .date)
