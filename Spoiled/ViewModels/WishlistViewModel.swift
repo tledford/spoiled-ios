@@ -14,6 +14,8 @@ class WishlistViewModel: ObservableObject {
     @Published var giftIdeas: [GiftIdea]?
     @Published var groupInvitations: [GroupInvitation] = []
     @Published var removedPurchases: [RemovedPurchase] = []
+    /// A brand-new account, which needs to finish its profile.
+    @Published var needsProfileSetup = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     /// Why the most recent load failed. Cleared by the next success. Saves report through `errorMessage` instead.
@@ -290,6 +292,7 @@ class WishlistViewModel: ObservableObject {
         giftIdeas = nil
         groupInvitations = []
         removedPurchases = []
+        needsProfileSetup = false
         isLoading = false
         errorMessage = nil
 
@@ -337,6 +340,11 @@ class WishlistViewModel: ObservableObject {
 //            self.giftIdeas = mockData.giftIdeas
 //            #else
             let (data, isNewUser) = try await effectiveBootstrap.load()
+            // Before the check below: a newer load won't find the account new, because this one just created it.
+            if isNewUser, !needsProfileSetup, _authClientOverride != nil {
+                needsProfileSetup = true
+                AnalyticsEvents.signUp(method: AnalyticsAuthProvider.last())
+            }
             guard generation == loadGeneration else { return }
 //            #endif
             dlog("Bootstrap success: user=\(data.user.id) groups=\(data.groups.count) kids=\(data.kids.count) myItems=\(data.wishlistItems.count) giftIdeas=\(data.giftIdeas.count)")
@@ -346,11 +354,6 @@ class WishlistViewModel: ObservableObject {
             consecutiveLoadFailures = 0
             retryCount = 0
             cache.save(data)
-            if isNewUser {
-                // newly created account; surface a flag so UI can navigate to EditProfileView
-                NotificationCenter.default.post(name: Notification.Name("NewUserCreated"), object: nil)
-                AnalyticsEvents.signUp(method: AnalyticsAuthProvider.last())
-            }
         } catch {
             guard generation == loadGeneration else { return }
             if !error.isCancellation {

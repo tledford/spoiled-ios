@@ -70,6 +70,61 @@ struct WishlistViewModelLoadTests {
         #expect(viewModel.currentUser == nil)
     }
 
+    @Test func aBrandNewAccountIsAskedToFinishItsProfile() async {
+        let bootstraps = Recorder<Void>()
+        let viewModel = WishlistViewModel()
+        viewModel.configure(client: StubURLProtocol.client { request in
+            if request.url?.path().hasSuffix("/users") == true { return (200, Data(#"{"id":"me"}"#.utf8)) }
+            bootstraps.append(())
+            return bootstraps.count == 1 ? (404, .apiError(code: "NOT_FOUND")) : (200, .bootstrap())
+        }, startLoading: false)
+
+        await viewModel.load()
+
+        #expect(viewModel.currentUser?.id == "me")
+        #expect(viewModel.needsProfileSetup)
+    }
+
+    @Test func anExistingAccountIsNotAsked() async {
+        let viewModel = WishlistViewModel()
+        viewModel.configure(client: StubURLProtocol.client { _ in (200, .bootstrap()) }, startLoading: false)
+        await viewModel.load()
+        #expect(!viewModel.needsProfileSetup)
+    }
+
+    /// At launch two loads can overlap. The one that creates the account may lose to the newer one, which finds it existing.
+    @Test func aNewAccountIsStillAskedWhenALoadOvertakesTheOneThatCreatedIt() async {
+        let creating = DispatchSemaphore(value: 0)
+        let release = DispatchSemaphore(value: 0)
+        let bootstraps = Recorder<Void>()
+        let viewModel = WishlistViewModel()
+        viewModel.configure(client: StubURLProtocol.client { request in
+            if request.url?.path().hasSuffix("/users") == true {
+                creating.signal()
+                release.wait()
+                return (200, Data(#"{"id":"me"}"#.utf8))
+            }
+            bootstraps.append(())
+            return bootstraps.count == 1 ? (404, .apiError(code: "NOT_FOUND")) : (200, .bootstrap())
+        }, startLoading: false)
+
+        let creatingLoad = Task { await viewModel.load() }
+        await Task.detached { creating.wait() }.value
+        await viewModel.load()
+        #expect(!viewModel.needsProfileSetup)
+
+        release.signal()
+        await creatingLoad.value
+        #expect(viewModel.needsProfileSetup)
+    }
+
+    @Test func signingOutForgetsThePrompt() {
+        let viewModel = WishlistViewModel()
+        viewModel.needsProfileSetup = true
+        viewModel.resetForSignOut()
+        #expect(!viewModel.needsProfileSetup)
+    }
+
     @Test func anOlderLoadCannotOverwriteANewerOne() async throws {
         let firstStarted = DispatchSemaphore(value: 0)
         let releaseFirst = DispatchSemaphore(value: 0)

@@ -11,10 +11,15 @@ struct EditGroupView: View {
     @State private var pendingInvitationToDelete: PendingInvitation?
     @State private var showingAddMemberSheet = false
     
-    let group: Group
-    
+    private let initialGroup: Group
+
+    /// The latest copy, so members and invitations update while this screen is open.
+    private var group: Group {
+        viewModel.groups?.first(where: { $0.id == initialGroup.id }) ?? initialGroup
+    }
+
     init(group: Group) {
-        self.group = group
+        initialGroup = group
         _name = State(initialValue: group.name)
     }
     

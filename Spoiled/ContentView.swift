@@ -7,7 +7,6 @@ struct ContentView: View {
     @EnvironmentObject private var notificationSettings: BirthdayNotificationSettings
     @EnvironmentObject private var notifications: BirthdayNotificationCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var showEditProfile = false
     @State private var showNotificationPrimer = false
     @AppStorage("pendingInviteCode") private var pendingInviteCode = ""
     @Namespace private var giftNamespace
@@ -95,13 +94,16 @@ struct ContentView: View {
             }
         }
         .toast(toastCenter)
-        .sheet(isPresented: $showEditProfile) {
+        .sheet(isPresented: $wishlistViewModel.needsProfileSetup) {
             EditProfileView(viewModel: wishlistViewModel)
                 .environmentObject(toastCenter)
         }
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NewUserCreated"))) { _ in
-            toastCenter.info("Welcome! Let's finish setting up your profile.")
-            showEditProfile = true
+        .onChange(of: wishlistViewModel.needsProfileSetup, initial: true) { _, needsSetup in
+            if needsSetup {
+                toastCenter.info("Welcome! Let's finish setting up your profile.")
+            } else {
+                Task { await maybePrimeNotifications() }
+            }
         }
         .sheet(isPresented: showInviteLink) {
             JoinGroupView(code: pendingInviteCode)
@@ -131,7 +133,8 @@ struct ContentView: View {
     }
 
     private func maybePrimeNotifications() async {
-        guard wishlistViewModel.currentUser != nil, !notificationSettings.hasPrimed else { return }
+        // Only one sheet can show at a time, and the profile comes first.
+        guard wishlistViewModel.currentUser != nil, !notificationSettings.hasPrimed, !wishlistViewModel.needsProfileSetup else { return }
         await notifications.refreshAuthorizationStatus()
         if notifications.shouldPrime(hasLoadedUser: true, hasPrimed: notificationSettings.hasPrimed) {
             showNotificationPrimer = true

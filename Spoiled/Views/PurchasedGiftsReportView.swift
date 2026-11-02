@@ -248,7 +248,7 @@ private struct WishlistPurchaseRow: View {
                 .font(.system(size: 15, weight: .semibold))
 
             if purchased.isRemoved {
-                Label("Removed from wishlist", systemImage: "minus.circle")
+                Text("Removed from wishlist")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.brandGold)
             }
