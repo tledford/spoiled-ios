@@ -17,6 +17,7 @@ final class ToastCenter: ObservableObject {
 
     func show(_ toast: Toast) {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.65)) { current = toast }
+        AccessibilityNotification.Announcement(toast.message).post()
         DispatchQueue.main.asyncAfter(deadline: .now() + toast.duration) { [weak self] in
             withAnimation(.easeOut(duration: 0.25)) { self?.current = nil }
         }
@@ -36,9 +37,10 @@ struct ToastView: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: iconName)
-                .font(.system(size: 14, weight: .semibold))
+                .scaledFont(size: 14, relativeTo: .subheadline, weight: .semibold)
+                .accessibilityHidden(true)
             Text(toast.message)
-                .font(.system(size: 14, weight: .medium))
+                .scaledFont(size: 14, relativeTo: .subheadline, weight: .medium)
                 .multilineTextAlignment(.leading)
         }
         .padding(.horizontal, 16)

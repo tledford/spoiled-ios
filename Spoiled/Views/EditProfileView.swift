@@ -122,10 +122,10 @@ struct EditProfileView: View {
     private func fieldRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 15, weight: .medium))
+                .font(.subheadline.weight(.medium))
             Spacer()
             content()
-                .font(.system(size: 15))
+                .font(.subheadline)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)

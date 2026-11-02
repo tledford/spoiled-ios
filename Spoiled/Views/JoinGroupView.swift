@@ -41,6 +41,7 @@ private struct JoinGroupConfirmation: View {
                 Text("Join \(groupName)?")
                     .font(.title2.bold())
                     .multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
                 if let invitedByName {
                     Text("\(invitedByName) invited you")
                         .font(.subheadline)
@@ -274,6 +275,7 @@ struct GroupInvitationRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -305,6 +307,8 @@ struct InviteLinkSection: View {
                         Spacer()
                         Text(invite.code)
                             .font(.body.monospaced().weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
                             .textSelection(.enabled)
                     }
                     ShareLink(item: url, message: Text("Join my group “\(group.name)” on Spoiled. If you need the app first, your code is \(invite.code).")) {

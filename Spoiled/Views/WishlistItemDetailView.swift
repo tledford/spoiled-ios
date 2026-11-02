@@ -74,7 +74,7 @@ struct WishlistItemDetailView: View {
                         detailCard {
                             VStack(alignment: .leading, spacing: 8) {
                                 Label("Description", systemImage: "text.alignleft")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(Color.brandGold)
                                     .textCase(.uppercase)
                                     .tracking(0.5)
@@ -90,7 +90,7 @@ struct WishlistItemDetailView: View {
                         detailCard {
                             VStack(alignment: .leading, spacing: 8) {
                                 Label("Quantity", systemImage: "number")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(Color.brandGold)
                                     .textCase(.uppercase)
                                     .tracking(0.5)
@@ -106,7 +106,7 @@ struct WishlistItemDetailView: View {
                         detailCard {
                             VStack(alignment: .leading, spacing: 10) {
                                 Label("Shared With", systemImage: "person.3.fill")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(Color.brandGold)
                                     .textCase(.uppercase)
                                     .tracking(0.5)
@@ -151,7 +151,7 @@ struct WishlistItemDetailView: View {
                             HStack {
                                 Spacer()
                                 Label("Delete Item", systemImage: "trash")
-                                    .font(.system(size: 15, weight: .medium))
+                                    .font(.subheadline.weight(.medium))
                                 Spacer()
                             }
                             .padding(.vertical, 14)
@@ -214,7 +214,7 @@ struct WishlistItemDetailView: View {
         detailCard {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Purchases", systemImage: "gift.fill")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.brandGold)
                     .textCase(.uppercase)
                     .tracking(0.5)
@@ -258,7 +258,7 @@ struct WishlistItemDetailView: View {
                     Text(currentItem.isPurchased
                          ? (purchasedByOthers ? "Already Purchased" : "Mark as Not Purchased")
                          : "Mark as Purchased")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.callout.weight(.semibold))
                     if purchasedByOthers {
                         Text("Purchased by another group member")
                             .font(.caption)
@@ -267,7 +267,8 @@ struct WishlistItemDetailView: View {
                 }
                 Spacer()
                 Image(systemName: currentItem.isPurchased ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 24))
+                    .scaledFont(size: 24, relativeTo: .title2)
+                    .accessibilityHidden(true)
                     .scaleEffect(purchaseBounce ? 1.35 : 1.0)
                     .animation(
                         reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.45),

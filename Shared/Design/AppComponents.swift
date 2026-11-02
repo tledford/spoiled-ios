@@ -2,6 +2,29 @@ import SwiftUI
 
 // MARK: - PersonAvatar
 /// Colored circle with the person's initials. Color is deterministic based on the name.
+/// A fixed design size that still grows with Dynamic Type, for when no text style matches.
+private struct ScaledFontModifier: ViewModifier {
+    @ScaledMetric private var size: CGFloat
+    private let weight: Font.Weight
+    private let design: Font.Design
+
+    init(size: CGFloat, relativeTo textStyle: Font.TextStyle, weight: Font.Weight, design: Font.Design) {
+        _size = ScaledMetric(wrappedValue: size, relativeTo: textStyle)
+        self.weight = weight
+        self.design = design
+    }
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: size, weight: weight, design: design))
+    }
+}
+
+extension View {
+    func scaledFont(size: CGFloat, relativeTo textStyle: Font.TextStyle, weight: Font.Weight = .regular, design: Font.Design = .default) -> some View {
+        modifier(ScaledFontModifier(size: size, relativeTo: textStyle, weight: weight, design: design))
+    }
+}
+
 struct PersonAvatar: View {
     let name: String
     var size: CGFloat = 40
@@ -16,6 +39,8 @@ struct PersonAvatar: View {
                 .foregroundStyle(.white)
         }
         .frame(width: size, height: size)
+        // Initials next to the person's name would only be noise.
+        .accessibilityHidden(true)
     }
 
     private func initials(for name: String) -> String {
@@ -46,9 +71,11 @@ struct BirthdayBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "gift.fill")
-                .font(.system(size: 10, weight: .semibold))
+                .scaledFont(size: 10, relativeTo: .caption2, weight: .semibold)
+                .accessibilityHidden(true)
             Text(label)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.caption2.weight(.semibold))
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -83,7 +110,7 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: systemImage)
-                .font(.system(size: 52, weight: .light))
+                .scaledFont(size: 52, relativeTo: .largeTitle, weight: .light)
                 .foregroundStyle(Color.brandGold.opacity(0.7))
                 .scaleEffect(bouncing ? 1.08 : 1.0)
                 .animation(
@@ -91,6 +118,7 @@ struct EmptyStateView: View {
                     value: bouncing
                 )
                 .onAppear { bouncing = true }
+                .accessibilityHidden(true)
             VStack(spacing: 6) {
                 Text(title)
                     .font(.headline)
@@ -104,6 +132,7 @@ struct EmptyStateView: View {
         .padding(.horizontal, 40)
         .padding(.vertical, 32)
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -113,9 +142,10 @@ struct PrivateBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: "lock.fill")
-                .font(.system(size: 9, weight: .semibold))
+                .scaledFont(size: 9, relativeTo: .caption2, weight: .semibold)
+                .accessibilityHidden(true)
             Text("Private")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.caption2.weight(.semibold))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -134,13 +164,17 @@ struct AppSectionHeader: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.brandGold)
+                .accessibilityHidden(true)
             Text(title.uppercased())
-                .font(.system(size: 12, weight: .bold))
+                .font(.caption.weight(.bold))
                 .tracking(0.8)
                 .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -150,12 +184,15 @@ struct AppSectionHeader: View {
 /// The system's Liquid Glass capsule provides the background automatically on iOS 26+.
 struct NavButtonModifier: ViewModifier {
     var isIcon: Bool = true
+    @ScaledMetric(relativeTo: .subheadline) private var textSize: CGFloat = 14
 
     func body(content: Content) -> some View {
         content
-            .font(.system(size: 14, weight: .semibold))
+            // Icons have to fit their fixed frame. People can still read them by long-pressing, as with system bar buttons.
+            .font(.system(size: isIcon ? 14 : textSize, weight: .semibold))
             .foregroundStyle(.primary)
-            .frame(width: isIcon ? 36 : nil, height: 36)
+            .frame(width: isIcon ? 36 : nil)
+            .frame(minHeight: 36)
             .padding(.horizontal, isIcon ? 0 : 14)
     }
 }
@@ -207,9 +244,11 @@ struct SizesPillButton: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: "tshirt.fill")
-                    .font(.system(size: 10, weight: .semibold))
+                    .scaledFont(size: 10, relativeTo: .caption2, weight: .semibold)
+                    .accessibilityHidden(true)
                 Text("Sizes")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption2.weight(.semibold))
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -236,7 +275,7 @@ struct PersonSuggestionMenu: View {
                 }
             } label: {
                 Image(systemName: "chevron.down.circle.fill")
-                    .font(.system(size: 18))
+                    .scaledFont(size: 18, relativeTo: .body)
                     .foregroundStyle(Color.brandGold)
             }
             .accessibilityLabel("Choose a name you have used before")
@@ -251,7 +290,8 @@ struct GoldBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold))
+            .font(.caption2.weight(.semibold))
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(Color.brandGold.opacity(0.18))

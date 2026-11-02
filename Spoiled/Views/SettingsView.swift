@@ -24,9 +24,9 @@ struct SettingsView: View {
 
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(user.name)
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .scaledFont(size: 18, relativeTo: .body, weight: .semibold)
                                 Text(user.email)
-                                    .font(.system(size: 14))
+                                    .scaledFont(size: 14, relativeTo: .subheadline)
                                     .foregroundStyle(.secondary)
                             }
 
@@ -196,7 +196,7 @@ private struct AppleAccountDeletionSheet: View {
         NavigationStack {
             VStack(spacing: 20) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 44))
+                    .scaledFont(size: 44, relativeTo: .largeTitle)
                     .foregroundStyle(.red)
 
                 Text("Confirm Deletion")

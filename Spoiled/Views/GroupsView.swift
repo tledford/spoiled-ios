@@ -87,6 +87,7 @@ struct GroupsView: View {
                         Image(systemName: "plus")
                             .navButton()
                     }
+                    .accessibilityLabel("Add or join a group")
                 }
             }
             .sheet(isPresented: $showingAddGroupSheet) {
@@ -124,37 +125,48 @@ struct GroupsView: View {
 
 struct GroupRow: View {
     let group: Group
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.brandGold.opacity(0.15))
-                    .frame(width: 44, height: 44)
-                Image(systemName: "person.3.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(Color.brandGold)
+            // The icon and count add nothing the name and "7 members" don't, and at the
+            // largest text sizes they'd squeeze those into a narrow column.
+            if !dynamicTypeSize.isAccessibilitySize {
+                ZStack {
+                    Circle()
+                        .fill(Color.brandGold.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "person.3.fill")
+                        .scaledFont(size: 18, relativeTo: .body)
+                        .foregroundStyle(Color.brandGold)
+                }
+                .accessibilityHidden(true)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(group.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.callout.weight(.semibold))
                     if group.isAdmin {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 10))
+                            .scaledFont(size: 10, relativeTo: .caption2)
                             .foregroundStyle(Color.brandGold)
+                            .accessibilityLabel("Admin")
                     }
                 }
                 let count = group.members.count
                 Text(count == 1 ? "1 member" : "\(count) members")
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            GoldBadge(text: "\(group.members.count)")
+            if !dynamicTypeSize.isAccessibilitySize {
+                // Says the same as the member count beside it.
+                GoldBadge(text: "\(group.members.count)")
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -317,6 +329,7 @@ struct GroupDetailView: View {
                     Image(systemName: "ellipsis")
                         .navButton()
                 }
+                .accessibilityLabel("Group options")
             }
         }
         .alert("Leave \(group.name)?", isPresented: $showLeaveAlert) {
@@ -375,6 +388,7 @@ private struct MemberSectionHeader: View {
     let sizes: Sizes
     var isKid: Bool = false
     let onSizesTap: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(spacing: 10) {
@@ -384,29 +398,33 @@ private struct MemberSectionHeader: View {
                         .fill(Color.brandGold.opacity(0.15))
                         .frame(width: 32, height: 32)
                     Image(systemName: "figure.and.child.holdinghands")
-                        .font(.system(size: 14))
+                        .scaledFont(size: 14, relativeTo: .subheadline)
                         .foregroundStyle(Color.brandGold)
                 }
+                .accessibilityHidden(true)
             } else {
                 PersonAvatar(name: name, size: 32)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .textCase(nil)
+            // Beside the name there's no room for the pill at the largest text sizes.
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 10))) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(name)
+                        .scaledFont(size: 14, relativeTo: .subheadline, weight: .semibold)
+                        .foregroundStyle(.primary)
+                        .textCase(nil)
+                        .accessibilityAddTraits(.isHeader)
 
-                if let b = birthdate {
-                    let days = daysUntilNextBirthday(from: b)
-                    BirthdayBadge(daysUntil: days)
+                    if let b = birthdate {
+                        let days = daysUntilNextBirthday(from: b)
+                        BirthdayBadge(daysUntil: days)
+                    }
                 }
-            }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-
-            if hasNonEmptySizes(sizes) {
-                SizesPillButton(action: onSizesTap)
+                if hasNonEmptySizes(sizes) {
+                    SizesPillButton(action: onSizesTap)
+                }
             }
         }
         .padding(.vertical, 4)
@@ -455,10 +473,10 @@ struct ListSizesView: View {
     private func sizeRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 15, weight: .medium))
+                .font(.subheadline.weight(.medium))
             Spacer()
             Text(value)
-                .font(.system(size: 15))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .padding(16)

@@ -70,7 +70,7 @@ struct GiftIdeasView: View {
                                 HStack(spacing: 8) {
                                     PersonAvatar(name: personName, size: 26)
                                     Text(personName)
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .scaledFont(size: 14, relativeTo: .subheadline, weight: .semibold)
                                         .foregroundStyle(.primary)
                                         .textCase(nil)
                                 }
@@ -105,12 +105,14 @@ struct GiftIdeasView: View {
                         Image(systemName: "ellipsis.circle")
                             .navButton()
                     }
+                    .accessibilityLabel("More options")
                     Button {
                         showingAddGiftIdeaSheet = true
                     } label: {
                         Image(systemName: "plus")
                             .navButton()
                     }
+                    .accessibilityLabel("Add gift idea")
                 }
             }
             .sheet(isPresented: $showingAddGiftIdeaSheet) {
@@ -173,13 +175,13 @@ private struct GiftIdeaRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(giftIdea.giftName)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(giftIdea.isPurchased ? .secondary : .primary)
                     .strikethrough(giftIdea.isPurchased, color: .secondary)
 
                 if !giftIdea.notes.isEmpty {
                     Text(giftIdea.notes)
-                        .font(.system(size: 13))
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                         .italic()
                 }
@@ -189,9 +191,10 @@ private struct GiftIdeaRow: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "link")
-                                .font(.system(size: 11))
+                                .font(.caption2)
+                                .accessibilityHidden(true)
                             Text("View Online")
-                                .font(.system(size: 12))
+                                .font(.caption)
                         }
                         .foregroundStyle(Color.brandGold)
                     }
@@ -212,7 +215,7 @@ private struct GiftIdeaRow: View {
                         Task { await viewModel.toggleGiftIdeaPurchased(giftIdea) }
                     } label: {
                         Image(systemName: giftIdea.isPurchased ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 20))
+                            .font(.title3)
                             .foregroundStyle(giftIdea.isPurchased ? .green : Color.secondary.opacity(0.5))
                             .scaleEffect(checkBounce ? 1.25 : 1.0)
                             .animation(
@@ -238,7 +241,7 @@ private struct GiftIdeaRow: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 16))
+                            .font(.callout)
                             .foregroundStyle(.secondary)
                     }
                     .disabled(viewModel.isSavingGiftIdea || viewModel.deletingGiftIdeaIds.contains(giftIdea.id))

@@ -72,7 +72,7 @@ struct AddWishlistItemView: View {
                                 HStack(spacing: 10) {
                                     PersonAvatar(name: kid.name, size: 28)
                                     Text("For: \(kid.name)")
-                                        .font(.system(size: 15, weight: .medium))
+                                        .font(.subheadline.weight(.medium))
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 16)
@@ -86,7 +86,7 @@ struct AddWishlistItemView: View {
                                 VStack(spacing: 0) {
                                     HStack {
                                         Text("For:")
-                                            .font(.system(size: 15, weight: .medium))
+                                            .font(.subheadline.weight(.medium))
                                         Spacer()
                                         Picker("", selection: $selectedKid) {
                                             Text("Select...").tag(nil as Kid?)
@@ -116,7 +116,7 @@ struct AddWishlistItemView: View {
                                 }
                             )) {
                                 Label("All Groups", systemImage: "person.3.fill")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.subheadline.weight(.semibold))
                             }
                             .tint(.brandGold)
                             .padding(.horizontal, 16)

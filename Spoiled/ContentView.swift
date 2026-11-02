@@ -162,7 +162,7 @@ private struct BirthdayNotificationPrimerSheet: View {
     private var content: some View {
         VStack(spacing: 20) {
             Image(systemName: "birthday.cake.fill")
-                .font(.system(size: 44))
+                .scaledFont(size: 44, relativeTo: .largeTitle)
                 .foregroundStyle(Color.brandGold)
 
             Text("Never Miss a Birthday")
@@ -183,7 +183,7 @@ private struct BirthdayNotificationPrimerSheet: View {
                 }
             } label: {
                 Text("Turn On Reminders")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.callout.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
             }

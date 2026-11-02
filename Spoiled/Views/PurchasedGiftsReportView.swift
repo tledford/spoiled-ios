@@ -59,6 +59,7 @@ struct PurchasedGiftsReportView: View {
                     Image(systemName: "ellipsis.circle")
                         .navButton(isIcon: true)
                 }
+                .accessibilityLabel("More options")
             }
         }
         .sheet(isPresented: $showingClearSheet) {
@@ -122,7 +123,7 @@ struct PurchasedGiftsReportView: View {
                     if wishlistItemsByPerson.isEmpty {
                         Section {
                             Text("No wishlist items purchased yet")
-                                .font(.system(size: 14))
+                                .scaledFont(size: 14, relativeTo: .subheadline)
                                 .foregroundStyle(.secondary)
                                 .listRowBackground(Color.appSurface)
                         }
@@ -147,7 +148,7 @@ struct PurchasedGiftsReportView: View {
                     if purchasedGiftIdeasByPerson.isEmpty {
                         Section {
                             Text("No gift ideas purchased yet")
-                                .font(.system(size: 14))
+                                .scaledFont(size: 14, relativeTo: .subheadline)
                                 .foregroundStyle(.secondary)
                                 .listRowBackground(Color.appSurface)
                         }
@@ -180,14 +181,14 @@ private struct PurchaseCutoffBanner: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "eye.slash")
-                .font(.system(size: 14, weight: .semibold))
+                .scaledFont(size: 14, relativeTo: .subheadline, weight: .semibold)
                 .foregroundStyle(Color.brandGold)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Hiding purchases before \(cutoff.formatted(date: .abbreviated, time: .omitted))")
-                    .font(.system(size: 14, weight: .semibold))
+                    .scaledFont(size: 14, relativeTo: .subheadline, weight: .semibold)
                 Text("Hidden from your report only. Show All Purchases brings them back.")
-                    .font(.system(size: 12))
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
@@ -213,7 +214,7 @@ private struct PurchaseCategoryHeader: View {
                 .fill(Color.brandGold.opacity(0.35))
                 .frame(height: 1)
             Text(title.uppercased())
-                .font(.system(size: 12, weight: .bold))
+                .font(.caption.weight(.bold))
                 .foregroundStyle(Color.brandGold)
                 .textCase(nil)
                 .fixedSize()
@@ -232,7 +233,7 @@ private struct PurchasePersonHeader: View {
         HStack(spacing: 8) {
             PersonAvatar(name: name, size: 30)
             Text(name)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.body.weight(.semibold))
                 .foregroundStyle(.primary)
                 .textCase(nil)
         }
@@ -242,41 +243,33 @@ private struct PurchasePersonHeader: View {
 private struct WishlistPurchaseRow: View {
     let purchased: WishlistViewModel.PurchasedItem
 
+    /// One piece of text, so it wraps as a sentence at larger text sizes rather than as narrow columns.
+    private var details: String {
+        var parts: [String] = []
+        if purchased.quantity > 1 { parts.append("Qty \(purchased.quantity)") }
+        if let price = purchased.item.price { parts.append(price.formatted(.currency(code: "USD"))) }
+        if let date = purchased.purchasedAt { parts.append(date.formatted(date: .long, time: .omitted)) }
+        return parts.joined(separator: " • ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(purchased.item.name)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
 
             if purchased.isRemoved {
                 Text("Removed from wishlist")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(Color.brandGold)
             }
 
-            HStack(spacing: 6) {
-                if purchased.quantity > 1 {
-                    Text("Qty \(purchased.quantity)")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    if purchased.item.price != nil {
-                        Text("•").foregroundStyle(.secondary)
-                    }
-                }
-                if let price = purchased.item.price {
-                    Text("$\(price, specifier: "%.2f")")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-                if let date = purchased.purchasedAt {
-                    if purchased.item.price != nil || purchased.quantity > 1 {
-                        Text("•").foregroundStyle(.secondary)
-                    }
-                    Text(date, style: .date)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
+            if !details.isEmpty {
+                Text(details)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
             }
         }
+        .accessibilityElement(children: .combine)
         .padding(.vertical, 4)
         .listRowBackground(Color.appSurface)
     }
@@ -288,11 +281,11 @@ private struct GiftIdeaPurchaseRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(idea.giftName)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
 
             if !idea.notes.isEmpty {
                 Text(idea.notes)
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
                     .italic()
             }

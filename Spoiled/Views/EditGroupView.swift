@@ -53,6 +53,7 @@ struct EditGroupView: View {
                                         .foregroundColor(.red)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Remove \(member.name)")
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
@@ -65,6 +66,7 @@ struct EditGroupView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "person.badge.plus")
+                                    .accessibilityHidden(true)
                                 Text("Invite by Email")
                             }
                             .foregroundStyle(Color.brandGold)
@@ -97,6 +99,7 @@ struct EditGroupView: View {
                                             .foregroundColor(.red)
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityLabel("Cancel invitation for \(pendingInvitation.email)")
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)

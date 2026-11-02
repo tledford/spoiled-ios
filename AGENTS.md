@@ -151,6 +151,12 @@ Screen tracking uses the `.trackScreen("ScreenName")` view modifier applied to t
 
 API calls that return no meaningful body use a shared `OkResponse` decodable type (defined in one of the service files). Discard the result with `_ = try await client.execute(...)`.
 
+### Text sizes and VoiceOver
+
+Text has to grow with Dynamic Type. Use a text style (`.font(.subheadline.weight(.semibold))`), or `.scaledFont(size:relativeTo:)` for display sizes no style matches. Don't use `.font(.system(size:))`. Rows with several columns stack at accessibility sizes (`dynamicTypeSize.isAccessibilitySize`, with `AnyLayout` so views keep their identity).
+
+Icon-only buttons need an `.accessibilityLabel`. Decorative icons get `.accessibilityHidden(true)`, and section titles get the `.isHeader` trait.
+
 ### Debug logging
 
 `WishlistViewModel` uses `OSLog` behind `#if DEBUG` guards. Use the `dlog()`/`elog()` helpers — don't use `print()`.

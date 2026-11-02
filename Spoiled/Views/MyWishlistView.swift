@@ -42,6 +42,7 @@ struct MyWishlistView: View {
                         Image(systemName: "plus")
                             .navButton()
                     }
+                    .accessibilityLabel("Add item")
                 }
             }
             .sheet(isPresented: $showingAddItemSheet) {
@@ -69,7 +70,7 @@ struct GlassSegmentedPicker: View {
                     }
                 } label: {
                     Text(option)
-                        .font(.system(size: 14, weight: .semibold))
+                        .scaledFont(size: 14, relativeTo: .subheadline, weight: .semibold)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .foregroundStyle(selection == option ? .white : .secondary)
@@ -155,7 +156,7 @@ struct KidsItemsListView: View {
                 ForEach(kids) { kid in
                     VStack(alignment: .leading, spacing: 10) {
                         Text(kid.name.uppercased())
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.caption.weight(.bold))
                             .tracking(0.8)
                             .foregroundStyle(.secondary)
                             .padding(.leading, 4)
@@ -305,13 +306,13 @@ struct WishlistItemRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(isInGroupView && item.isPurchased ? .secondary : .primary)
                     .strikethrough(isInGroupView && item.isPurchased, color: .secondary)
 
                 if let quantityLabel {
                     Text(quantityLabel)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
 
@@ -323,7 +324,8 @@ struct WishlistItemRow: View {
             if isInGroupView && item.isPurchased {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                    .font(.system(size: 18))
+                    .accessibilityLabel("Purchased")
+                    .scaledFont(size: 18, relativeTo: .body)
             }
         }
     }

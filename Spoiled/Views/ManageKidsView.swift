@@ -21,6 +21,7 @@ struct ManageKidsView: View {
                             Image(systemName: "plus")
                                 .navButton()
                         }
+                        .accessibilityLabel("Add kid")
                     }
                 }
                 .sheet(isPresented: $showingAddKidSheet) {
@@ -86,7 +87,7 @@ private struct KidRow: View {
                 PersonAvatar(name: kid.name, size: 36)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(kid.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.callout.weight(.semibold))
                     let days = daysUntilNextBirthday(from: kid.birthdate)
                     BirthdayBadge(daysUntil: days)
                 }
