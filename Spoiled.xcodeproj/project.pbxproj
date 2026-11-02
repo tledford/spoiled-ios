@@ -56,6 +56,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		65C0DE0000000000000000F1 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Config/Debug.xcconfig; sourceTree = "<group>"; };
 		652DAB432D26527600792D89 /* Spoiled.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Spoiled.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		652DAB532D26527700792D89 /* SpoiledTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpoiledTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		652DAB5D2D26527700792D89 /* SpoiledUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpoiledUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -155,6 +156,7 @@
 		652DAB3A2D26527600792D89 = {
 			isa = PBXGroup;
 			children = (
+				65C0DE0000000000000000F1 /* Debug.xcconfig */,
 				65C0DE0000000000000000A4 /* Shared */,
 				652DAB452D26527600792D89 /* Spoiled */,
 				65C0DE0000000000000000A3 /* SpoiledShare */,
@@ -414,6 +416,7 @@
 /* Begin XCBuildConfiguration section */
 		652DAB652D26527700792D89 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 65C0DE0000000000000000F1 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -545,6 +548,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Spoiled/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Spoiled;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connects to a development server on this network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

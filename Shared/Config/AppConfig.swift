@@ -32,10 +32,26 @@ struct APIConfig: Sendable {
     }
 
     var privacyPolicyURL: URL { rootURL.appendingPathComponent("legal/privacy_policy") }
+
+    /// A worker on the local network, or nil when no host has been set.
+    static func local(host: String?, port: String?) -> APIConfig? {
+        guard let host, !host.isEmpty else { return nil }
+        return APIConfig(scheme: "http", host: host, port: port.flatMap(Int.init), version: "v1")
+    }
 }
 
 enum AppConfig {
-    // Update these to swap environments quickly
-//   static var api: APIConfig = APIConfig(scheme: "http", host: "192.168.1.217", port: 8787, version: "v1") // Local dev
-      static var api: APIConfig = APIConfig(scheme: "https", host: "prod.tomled.dev", version: "v1") // CF Worker
+    static let production = APIConfig(scheme: "https", host: "prod.tomled.dev", version: "v1")
+
+    /// Production, unless this is a Debug build that was given a local worker's address.
+    /// A Release build can't point anywhere else. See "Environment switching" in AGENTS.md.
+    static var api: APIConfig {
+        #if DEBUG
+        let info = Bundle.main.infoDictionary
+        if let local = APIConfig.local(host: info?["SpoiledLocalAPIHost"] as? String, port: info?["SpoiledLocalAPIPort"] as? String) {
+            return local
+        }
+        #endif
+        return production
+    }
 }

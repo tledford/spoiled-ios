@@ -30,7 +30,7 @@ npm run seed       # seed local D1 with test data
 npm run seed:reset # reset and re-seed
 ```
 
-To hit the local worker from the app, toggle `AppConfig.swift` (see Environment switching below).
+To hit the local worker from the app, see Environment switching below.
 
 ## Architecture
 
@@ -103,12 +103,13 @@ kids' wishlists, or a gift idea.
 
 ### Environment switching
 
-`AppConfig.swift` has two commented lines. Toggle the comment to switch between the local worker (`../spoiled-api-cf` running on `npm run dev`) and production:
+Builds use production unless a Debug build is given a local worker's address. Release builds always use production; `AppConfig` reads the address only under `#if DEBUG`.
 
-```swift
-// static var api = APIConfig(scheme: "http", host: "192.168.1.178", port: 8787, version: "v1") // Local dev
-static var api = APIConfig(scheme: "https", host: "prod.tomled.dev", version: "v1") // CF Worker
-```
+- **On the iPhone:** `./build-deploy.sh --local [port]` finds this Mac's network address and passes it as build settings. The default port is 8788, because something else on this Mac usually holds 8787.
+- **From Xcode:** copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` (git-ignored) and fill it in. Delete it to go back to production.
+- **The worker:** `npm run dev -- --port 8788` in `../spoiled-api-cf`.
+
+`SPOILED_LOCAL_API_HOST` and `SPOILED_LOCAL_API_PORT` reach the app through the `SpoiledLocalAPIHost` and `SpoiledLocalAPIPort` keys in both targets' Info.plist.
 
 ### Adding a new service method
 
