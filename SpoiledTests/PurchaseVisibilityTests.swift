@@ -16,9 +16,7 @@ struct PurchaseVisibilityTests {
     private func makeViewModel(purchaseDates: [Date?], resetDate: Date?) -> WishlistViewModel {
         let items = purchaseDates.enumerated().map { index, purchasedAt in
             WishlistItem(name: "Gift \(index)",
-                         isPurchased: true,
-                         purchasedAt: purchasedAt,
-                         purchasedBy: meId)
+                         purchases: [WishlistItemPurchase(userId: meId, quantity: 1, purchasedAt: purchasedAt)])
         }
         let viewModel = WishlistViewModel()
         viewModel.currentUser = User(id: meId,

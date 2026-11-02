@@ -66,10 +66,15 @@ struct APIWishlistItem: Decodable {
     let description: String?
     let price: Double?
     let link: String? // decode as string to avoid throwing on invalid URLs
-    let isPurchased: Bool?
-    let purchasedAt: String?
-    let purchasedBy: String?
+    let quantityDesired: Int?
+    let purchases: [APIWishlistItemPurchase]?
     let assignedGroupIds: [UUID]?
+}
+
+struct APIWishlistItemPurchase: Decodable {
+    let userId: String?
+    let quantity: Int
+    let purchasedAt: String?
 }
 
 struct APIGiftIdea: Decodable {
@@ -232,9 +237,10 @@ private extension APIWishlistItem {
             description: description ?? "",
             price: price,
             link: link.flatMap { URL(string: $0) },
-            isPurchased: isPurchased ?? false,
-            purchasedAt: parseAPIDate(purchasedAt),
-            purchasedBy: purchasedBy,
+            quantityDesired: quantityDesired ?? 1,
+            purchases: (purchases ?? []).map {
+                WishlistItemPurchase(userId: $0.userId, quantity: $0.quantity, purchasedAt: parseAPIDate($0.purchasedAt))
+            },
             assignedGroupIds: assignedGroupIds ?? []
         )
     }

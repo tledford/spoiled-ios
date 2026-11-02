@@ -114,7 +114,7 @@ class WishlistViewModel: ObservableObject {
 
     /// How many currently visible purchases a clear with this cutoff would hide.
     func purchasedWishlistItemCount(before cutoff: Date) -> Int {
-        purchasedWishlistItems.filter { ($0.item.purchasedAt ?? .distantPast) < cutoff }.count
+        purchasedWishlistItems.filter { ($0.purchasedAt ?? .distantPast) < cutoff }.count
     }
 
     /// Hides wishlist purchases made before `cutoff` from this user's report. Defaults to hiding everything
@@ -251,94 +251,67 @@ class WishlistViewModel: ObservableObject {
         dlog("Bootstrap finished. isLoading=false")
     }
 
-    func toggleItemPurchased(_ item: WishlistItem, groupId: UUID?, groupMemberId: String?, kidId: UUID? = nil) {
-        guard let groupId, let currentUserId = currentUser?.id else { return }
+    /// Sets how many of a group member's or kid's item the current user has bought. 0 clears their purchase.
+    /// On failure the item is rolled back and `errorMessage` says why.
+    func setItemPurchaseQuantity(_ item: WishlistItem, quantity: Int, groupId: UUID?, groupMemberId: String?, kidId: UUID? = nil) async -> Bool {
+        guard let groupId, let currentUserId = currentUser?.id else { return false }
 
-        // Determine context: member's own item vs kid item
-    if let memberUserId = groupMemberId,
-           let groupIndex = groups?.firstIndex(where: { $0.id == groupId }),
-       let memberIndex = groups?[groupIndex].members.firstIndex(where: { $0.id == memberUserId }),
-           let itemIndex = groups?[groupIndex].members[memberIndex].wishlistItems.firstIndex(where: { $0.id == item.id }) {
-
-            var target = groups![groupIndex].members[memberIndex].wishlistItems[itemIndex]
-            if target.isPurchased, let purchaser = target.purchasedBy, purchaser != currentUserId { return }
-
-            target.isPurchased.toggle()
-            if target.isPurchased {
-                target.purchasedAt = Date()
-                target.purchasedBy = currentUserId
-            } else {
-                target.purchasedAt = nil
-                target.purchasedBy = nil
-            }
-            groups?[groupIndex].members[memberIndex].wishlistItems[itemIndex] = target
-
-            Task { [weak self] in
-                guard let self else { return }
-                do {
-                    let res = try await effectiveWishlist.toggleGroupMemberItem(groupId: groupId, memberUserId: memberUserId, itemId: item.id)
-                    if res.isPurchased {
-                        AnalyticsEvents.wishlistItemPurchased(itemId: item.id, context: "group_member")
-                    } else {
-                        AnalyticsEvents.wishlistItemUnpurchased(itemId: item.id, context: "group_member")
-                    }
-                    await self.refreshAll()
-                } catch {
-                    // Roll back
-                    if let gi = self.groups?.firstIndex(where: { $0.id == groupId }),
-                       let mi = self.groups?[gi].members.firstIndex(where: { $0.id == memberUserId }),
-                       let ii = self.groups?[gi].members[mi].wishlistItems.firstIndex(where: { $0.id == item.id }) {
-                        self.groups?[gi].members[mi].wishlistItems[ii] = item
-                    }
-                    await MainActor.run { self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error) }
-                }
-            }
-            return
+        let wasPurchased = item.isPurchased
+        updateGroupItem(item.id, groupId: groupId, groupMemberId: groupMemberId, kidId: kidId) {
+            $0.setPurchase(quantity: quantity, by: currentUserId)
         }
 
-        // Kid item in group view
-        if let kidId,
-           let groupIndex = groups?.firstIndex(where: { $0.id == groupId }) {
-            // Find kid within member sections
-            if let km = groups?[groupIndex].members.firstIndex(where: { member in member.kids.contains(where: { $0.id == kidId && $0.wishlistItems.contains(where: { $0.id == item.id }) }) }) {
-                // Find indices
-                let kids = groups![groupIndex].members[km].kids
-                guard let kidIdx = kids.firstIndex(where: { $0.id == kidId }),
-                      let itemIdx = kids[kidIdx].wishlistItems.firstIndex(where: { $0.id == item.id }) else { return }
-                var target = groups![groupIndex].members[km].kids[kidIdx].wishlistItems[itemIdx]
-                if target.isPurchased, let purchaser = target.purchasedBy, purchaser != currentUserId { return }
-                target.isPurchased.toggle()
-                if target.isPurchased {
-                    target.purchasedAt = Date()
-                    target.purchasedBy = currentUserId
-                } else {
-                    target.purchasedAt = nil
-                    target.purchasedBy = nil
-                }
-                groups![groupIndex].members[km].kids[kidIdx].wishlistItems[itemIdx] = target
+        do {
+            let isPurchased: Bool
+            let context: String
+            if let kidId {
+                isPurchased = try await effectiveWishlist.setGroupKidItemPurchase(groupId: groupId, kidId: kidId, itemId: item.id, quantity: quantity)
+                context = "group_kid"
+            } else if let groupMemberId {
+                isPurchased = try await effectiveWishlist.setGroupMemberItemPurchase(groupId: groupId, memberUserId: groupMemberId, itemId: item.id, quantity: quantity)
+                context = "group_member"
+            } else {
+                updateGroupItem(item.id, groupId: groupId, groupMemberId: groupMemberId, kidId: kidId) { $0 = item }
+                return false
+            }
 
-                Task { [weak self] in
-                    guard let self else { return }
-                    do {
-                        let res = try await effectiveWishlist.toggleGroupKidItem(groupId: groupId, kidId: kidId, itemId: item.id)
-                        if res.isPurchased {
-                            AnalyticsEvents.wishlistItemPurchased(itemId: item.id, context: "group_kid")
-                        } else {
-                            AnalyticsEvents.wishlistItemUnpurchased(itemId: item.id, context: "group_kid")
-                        }
-                        await self.refreshAll()
-                    } catch {
-                        // Roll back
-                        if let gi = self.groups?.firstIndex(where: { $0.id == groupId }),
-                           let kmi = self.groups?[gi].members.firstIndex(where: { member in member.kids.contains(where: { $0.id == kidId && $0.wishlistItems.contains(where: { $0.id == item.id }) }) }),
-                           let kidIdx2 = self.groups?[gi].members[kmi].kids.firstIndex(where: { $0.id == kidId }),
-                           let ii = self.groups?[gi].members[kmi].kids[kidIdx2].wishlistItems.firstIndex(where: { $0.id == item.id }) {
-                            self.groups?[gi].members[kmi].kids[kidIdx2].wishlistItems[ii] = item
-                        }
-                        await MainActor.run { self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error) }
-                    }
+            AnalyticsEvents.wishlistItemPurchaseQuantitySet(itemId: item.id, quantity: quantity, quantityDesired: item.quantityDesired, context: context)
+            if isPurchased && !wasPurchased {
+                AnalyticsEvents.wishlistItemPurchased(itemId: item.id, context: context)
+            } else if !isPurchased && wasPurchased {
+                AnalyticsEvents.wishlistItemUnpurchased(itemId: item.id, context: context)
+            }
+            await refreshAll()
+            return true
+        } catch {
+            elog("Failed to set purchase quantity: \(String(describing: error))")
+            updateGroupItem(item.id, groupId: groupId, groupMemberId: groupMemberId, kidId: kidId) { $0 = item }
+            if let apiError = error as? APIError, case let .http(_, code, message, _, _) = apiError, code == "QUANTITY_EXCEEDED" {
+                // Someone else got there first, so the screen is out of date. `load` clears errorMessage, so set it after.
+                await refreshAll()
+                self.errorMessage = message
+            } else {
+                self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            }
+            return false
+        }
+    }
+
+    /// Changes the group's copy of an item, whether it's on a member's list or one of their kids'.
+    private func updateGroupItem(_ itemId: UUID, groupId: UUID, groupMemberId: String?, kidId: UUID?, change: (inout WishlistItem) -> Void) {
+        guard let gi = groups?.firstIndex(where: { $0.id == groupId }) else { return }
+        if let kidId {
+            for mi in groups![gi].members.indices {
+                if let ki = groups![gi].members[mi].kids.firstIndex(where: { $0.id == kidId }),
+                   let ii = groups![gi].members[mi].kids[ki].wishlistItems.firstIndex(where: { $0.id == itemId }) {
+                    change(&groups![gi].members[mi].kids[ki].wishlistItems[ii])
+                    return
                 }
             }
+        } else if let groupMemberId,
+                  let mi = groups![gi].members.firstIndex(where: { $0.id == groupMemberId }),
+                  let ii = groups![gi].members[mi].wishlistItems.firstIndex(where: { $0.id == itemId }) {
+            change(&groups![gi].members[mi].wishlistItems[ii])
         }
     }
 
@@ -356,7 +329,7 @@ class WishlistViewModel: ObservableObject {
             if let kidId = kidId {
                 let serverId = try await effectiveWishlist.createKidItem(userId: userId, kidId: kidId, item: item)
                 if serverId != item.id {
-                    newItem = WishlistItem(id: serverId, name: item.name, description: item.description, price: item.price, link: item.link, isPurchased: item.isPurchased, assignedGroupIds: item.assignedGroupIds)
+                    newItem = WishlistItem(id: serverId, name: item.name, description: item.description, price: item.price, link: item.link, quantityDesired: item.quantityDesired, assignedGroupIds: item.assignedGroupIds)
                 }
                 if let kidIndex = kids?.firstIndex(where: { $0.id == kidId }) {
                     kids?[kidIndex].wishlistItems.append(newItem)
@@ -365,7 +338,7 @@ class WishlistViewModel: ObservableObject {
             } else {
                 let serverId = try await effectiveWishlist.createUserItem(userId: userId, item: item)
                 if serverId != item.id {
-                    newItem = WishlistItem(id: serverId, name: item.name, description: item.description, price: item.price, link: item.link, isPurchased: item.isPurchased, assignedGroupIds: item.assignedGroupIds)
+                    newItem = WishlistItem(id: serverId, name: item.name, description: item.description, price: item.price, link: item.link, quantityDesired: item.quantityDesired, assignedGroupIds: item.assignedGroupIds)
                 }
                 if wishlistItems == nil { wishlistItems = [] }
                 wishlistItems?.append(newItem)
@@ -404,12 +377,13 @@ class WishlistViewModel: ObservableObject {
         }
     }
     
-    func updateWishlistItem(item: WishlistItem, name: String, description: String, link: URL?, assignedGroupIds: [UUID], kidId: UUID?) async -> Bool {
+    func updateWishlistItem(item: WishlistItem, name: String, description: String, link: URL?, quantityDesired: Int, assignedGroupIds: [UUID], kidId: UUID?) async -> Bool {
         guard let userId = currentUser?.id else { return false }
         var updated = item
         updated.name = name
         updated.description = description
         updated.link = link
+        updated.quantityDesired = quantityDesired
         updated.assignedGroupIds = assignedGroupIds
         do {
             isSavingWishlistItem = true
@@ -742,14 +716,18 @@ class WishlistViewModel: ObservableObject {
         let id: UUID
         let item: WishlistItem
         let recipientName: String
+        /// How many of the item the current user bought, which may be only part of what's wanted.
+        let quantity: Int
+        /// When the current user last added to that count.
+        let purchasedAt: Date?
     }
-    
+
     /// Whether a purchase survives the cutoff the user set with their last clear.
     /// With no clear on record the whole purchase history is shown. Items with no purchase date
     /// predate the clear as far as we can tell, so a cutoff hides them.
-    private func isPurchaseVisible(_ item: WishlistItem) -> Bool {
+    private func isPurchaseVisible(_ purchase: WishlistItemPurchase) -> Bool {
         guard let cutoff = purchaseCutoff else { return true }
-        guard let purchasedAt = item.purchasedAt else { return false }
+        guard let purchasedAt = purchase.purchasedAt else { return false }
         return purchasedAt >= cutoff
     }
 
@@ -758,28 +736,27 @@ class WishlistViewModel: ObservableObject {
         var result: [PurchasedItem] = []
         var seen = Set<UUID>()
 
-        // Items from group members
-        for group in groups ?? [] {
-            for member in group.members where member.id != userId {
-                for item in member.wishlistItems where item.isPurchased && item.purchasedBy == userId {
-                    if isPurchaseVisible(item), !seen.contains(item.id) {
-                        seen.insert(item.id)
-                        result.append(PurchasedItem(id: item.id, item: item, recipientName: member.name))
-                    }
-                }
-
-                // Items from members' kids
-                for kid in member.kids {
-                    for item in kid.wishlistItems where item.isPurchased && item.purchasedBy == userId {
-                        if isPurchaseVisible(item), !seen.contains(item.id) {
-                            seen.insert(item.id)
-                            result.append(PurchasedItem(id: item.id, item: item, recipientName: kid.name))
-                        }
-                    }
+        func collect(_ items: [WishlistItem], recipientName: String) {
+            for item in items {
+                if let purchase = item.purchase(by: userId), isPurchaseVisible(purchase), !seen.contains(item.id) {
+                    seen.insert(item.id)
+                    result.append(PurchasedItem(id: item.id, item: item, recipientName: recipientName, quantity: purchase.quantity, purchasedAt: purchase.purchasedAt))
                 }
             }
         }
 
-        return result.sorted { ($0.item.purchasedAt ?? Date.distantPast) > ($1.item.purchasedAt ?? Date.distantPast) }
+        // Items from group members
+        for group in groups ?? [] {
+            for member in group.members where member.id != userId {
+                collect(member.wishlistItems, recipientName: member.name)
+
+                // Items from members' kids
+                for kid in member.kids {
+                    collect(kid.wishlistItems, recipientName: kid.name)
+                }
+            }
+        }
+
+        return result.sorted { ($0.purchasedAt ?? Date.distantPast) > ($1.purchasedAt ?? Date.distantPast) }
     }
 }

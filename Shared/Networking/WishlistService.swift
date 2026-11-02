@@ -7,6 +7,7 @@ private struct CreateWishlistItemPayload: Encodable {
     let name: String
     let description: String?
     let link: String?
+    let quantityDesired: Int?
     let assignedGroupIds: [UUID]?
 }
 
@@ -14,8 +15,12 @@ private struct UpdateWishlistItemPayload: Encodable {
     let name: String?
     let description: String?
     let link: String?
-    let isPurchased: Bool?
+    let quantityDesired: Int?
     let assignedGroupIds: [UUID]?
+}
+
+private struct SetPurchaseQuantityPayload: Encodable {
+    let quantity: Int
 }
 
 // MARK: - Requests
@@ -33,6 +38,7 @@ private struct CreateUserItemRequest: APIRequest {
             name: item.name,
             description: item.description.isEmpty ? nil : item.description,
             link: item.link?.absoluteString,
+            quantityDesired: item.quantityDesired,
             assignedGroupIds: item.assignedGroupIds
         )
         let encoder = JSONEncoder()
@@ -54,6 +60,7 @@ private struct CreateKidItemRequest: APIRequest {
             name: item.name,
             description: item.description.isEmpty ? nil : item.description,
             link: item.link?.absoluteString,
+            quantityDesired: item.quantityDesired,
             assignedGroupIds: item.assignedGroupIds
         )
         let encoder = JSONEncoder()
@@ -74,7 +81,7 @@ private struct UpdateUserItemRequest: APIRequest {
             name: item.name,
             description: item.description,
             link: item.link?.absoluteString,
-            isPurchased: item.isPurchased,
+            quantityDesired: item.quantityDesired,
             assignedGroupIds: item.assignedGroupIds
         )
         let encoder = JSONEncoder()
@@ -95,7 +102,7 @@ private struct UpdateKidItemRequest: APIRequest {
             name: item.name,
             description: item.description,
             link: item.link?.absoluteString,
-            isPurchased: item.isPurchased,
+            quantityDesired: item.quantityDesired,
             assignedGroupIds: item.assignedGroupIds
         )
         let encoder = JSONEncoder()
@@ -124,23 +131,27 @@ private struct DeleteKidItemRequest: APIRequest {
     }
 }
 
-private struct ToggleGroupPurchaseRequest: APIRequest {
-    struct ToggleResponse: Decodable { let ok: Bool; let isPurchased: Bool; let purchasedAt: String?; let purchasedBy: String? }
-    typealias Response = ToggleResponse
+struct SetPurchaseQuantityResponse: Decodable { let ok: Bool; let isPurchased: Bool }
+
+private struct SetGroupPurchaseQuantityRequest: APIRequest {
+    typealias Response = SetPurchaseQuantityResponse
     let path: String
     let method: String = "PATCH"
-    init(groupId: UUID, memberUserId: String, itemId: UUID) {
+    let body: Data?
+    init(groupId: UUID, memberUserId: String, itemId: UUID, quantity: Int) {
         self.path = "/groups/\(groupId.uuidString)/members/\(memberUserId)/wishlist/\(itemId.uuidString)/purchase"
+        self.body = try? JSONEncoder().encode(SetPurchaseQuantityPayload(quantity: quantity))
     }
 }
 
-private struct ToggleGroupKidPurchaseRequest: APIRequest {
-    struct ToggleResponse: Decodable { let ok: Bool; let isPurchased: Bool; let purchasedAt: String?; let purchasedBy: String? }
-    typealias Response = ToggleResponse
+private struct SetGroupKidPurchaseQuantityRequest: APIRequest {
+    typealias Response = SetPurchaseQuantityResponse
     let path: String
     let method: String = "PATCH"
-    init(groupId: UUID, kidId: UUID, itemId: UUID) {
+    let body: Data?
+    init(groupId: UUID, kidId: UUID, itemId: UUID, quantity: Int) {
         self.path = "/groups/\(groupId.uuidString)/kids/\(kidId.uuidString)/wishlist/\(itemId.uuidString)/purchase"
+        self.body = try? JSONEncoder().encode(SetPurchaseQuantityPayload(quantity: quantity))
     }
 }
 
@@ -174,15 +185,13 @@ struct WishlistService {
         _ = try await client.execute(DeleteKidItemRequest(userId: userId, kidId: kidId, itemId: itemId))
     }
 
-    func toggleGroupMemberItem(groupId: UUID, memberUserId: String, itemId: UUID) async throws -> (isPurchased: Bool, purchasedAt: Date?, purchasedBy: String?) {
-        let res = try await client.execute(ToggleGroupPurchaseRequest(groupId: groupId, memberUserId: memberUserId, itemId: itemId))
-        let date = parseAPIDate(res.purchasedAt)
-        return (res.isPurchased, date, res.purchasedBy)
+    /// Sets how many of the item the caller has bought. Returns whether the item is now fully purchased.
+    func setGroupMemberItemPurchase(groupId: UUID, memberUserId: String, itemId: UUID, quantity: Int) async throws -> Bool {
+        try await client.execute(SetGroupPurchaseQuantityRequest(groupId: groupId, memberUserId: memberUserId, itemId: itemId, quantity: quantity)).isPurchased
     }
 
-    func toggleGroupKidItem(groupId: UUID, kidId: UUID, itemId: UUID) async throws -> (isPurchased: Bool, purchasedAt: Date?, purchasedBy: String?) {
-        let res = try await client.execute(ToggleGroupKidPurchaseRequest(groupId: groupId, kidId: kidId, itemId: itemId))
-        let date = parseAPIDate(res.purchasedAt)
-        return (res.isPurchased, date, res.purchasedBy)
+    /// Sets how many of the kid's item the caller has bought. Returns whether the item is now fully purchased.
+    func setGroupKidItemPurchase(groupId: UUID, kidId: UUID, itemId: UUID, quantity: Int) async throws -> Bool {
+        try await client.execute(SetGroupKidPurchaseQuantityRequest(groupId: groupId, kidId: kidId, itemId: itemId, quantity: quantity)).isPurchased
     }
 }

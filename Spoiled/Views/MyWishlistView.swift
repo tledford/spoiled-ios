@@ -199,6 +199,7 @@ struct WishlistItemRow: View {
     let groupMemberId: String?
     var useSheet: Bool = false
 
+    @EnvironmentObject private var toastCenter: ToastCenter
     @State private var showDetailSheet = false
 
     init(item: WishlistItem,
@@ -244,6 +245,7 @@ struct WishlistItemRow: View {
                     presentedAsSheet: true
                 )
                 .environmentObject(viewModel)
+                .toast(toastCenter) // The root view's toasts would be hidden behind this sheet.
             }
         } else {
             NavigationLink(destination: WishlistItemDetailView(
@@ -261,6 +263,13 @@ struct WishlistItemRow: View {
         }
     }
 
+    /// Owners only ever see how many they asked for, never how many have been bought.
+    private var quantityLabel: String? {
+        guard item.quantityDesired > 1 else { return nil }
+        guard isInGroupView else { return "Qty \(item.quantityDesired)" }
+        return item.isPurchased ? nil : "\(item.coveredQuantity) of \(item.quantityDesired) purchased"
+    }
+
     private var rowContent: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
@@ -268,6 +277,12 @@ struct WishlistItemRow: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(isInGroupView && item.isPurchased ? .secondary : .primary)
                     .strikethrough(isInGroupView && item.isPurchased, color: .secondary)
+
+                if let quantityLabel {
+                    Text(quantityLabel)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
 
                 if !isInGroupView && item.assignedGroupIds.isEmpty {
                     PrivateBadge()

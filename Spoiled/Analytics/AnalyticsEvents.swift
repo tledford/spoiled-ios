@@ -99,6 +99,14 @@ enum AnalyticsEvents {
             "context": context
         ])
     }
+    static func wishlistItemPurchaseQuantitySet(itemId: UUID, quantity: Int, quantityDesired: Int, context: String) {
+        Analytics.logEvent("wishlist_item_purchase_quantity_set", parameters: [
+            "item_id": itemId.uuidString,
+            "quantity": quantity,
+            "quantity_desired": quantityDesired,
+            "context": context
+        ])
+    }
     static func profileUpdated() { Analytics.logEvent("profile_updated", parameters: nil) }
     static func notificationPermissionPrompted() {
         Analytics.logEvent("notification_permission_prompted", parameters: nil)

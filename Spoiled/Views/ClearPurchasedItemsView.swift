@@ -143,7 +143,7 @@ struct ClearPurchasedItemsView: View {
     private func freezePickerBounds() {
         let calendar = Calendar.current
         let now = Date()
-        let oldestPurchase = viewModel.purchasedWishlistItems.compactMap { $0.item.purchasedAt }.min()
+        let oldestPurchase = viewModel.purchasedWishlistItems.compactMap { $0.purchasedAt }.min()
         let start = calendar.startOfDay(for: min(oldestPurchase ?? now, now))
         rangeStart = start
         rangeEnd = now
