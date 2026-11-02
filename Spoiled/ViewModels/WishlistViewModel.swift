@@ -41,6 +41,9 @@ class WishlistViewModel: ObservableObject {
         refreshTimer = nil
     }
 
+    /// Bumped by every load and by sign-out, so a response that's been overtaken can be ignored.
+    private var loadGeneration = 0
+
     private let bootstrapService: BootstrapService
     private let usersService: UsersService
     private let giftIdeasService: GiftIdeasService
@@ -174,8 +177,10 @@ class WishlistViewModel: ObservableObject {
 
     // Convenience to rebuild services with an auth-backed APIClient token provider
     func configureAuth(using auth: AuthViewModel) {
-        let provider: (Bool) async -> String? = { force in await auth.getValidIDToken(forceRefresh: force) }
-        let client = APIClient(tokenProvider: provider)
+        configure(client: APIClient(tokenProvider: { force in try await auth.getValidIDToken(forceRefresh: force) }))
+    }
+
+    func configure(client: APIClient, startLoading: Bool = true) {
         let bs = BootstrapService(client: client)
         let us = UsersService(client: client)
         let gis = GiftIdeasService(client: client)
@@ -194,7 +199,28 @@ class WishlistViewModel: ObservableObject {
         _kidsServiceOverride = ks
 
         // Now that auth is configured, kick off a fresh load
-        Task { await self.load() }
+        if startLoading { Task { await self.load() } }
+    }
+
+    /// Forgets the signed-in user, so the next account can't see any of their data. A load
+    /// still in flight is abandoned rather than allowed to write it back.
+    func resetForSignOut() {
+        loadGeneration += 1
+        currentUser = nil
+        groups = nil
+        kids = nil
+        wishlistItems = nil
+        giftIdeas = nil
+        isLoading = false
+        errorMessage = nil
+
+        _authClientOverride = nil
+        _bootstrapServiceOverride = nil
+        _usersServiceOverride = nil
+        _giftIdeasServiceOverride = nil
+        _wishlistServiceOverride = nil
+        _groupsServiceOverride = nil
+        _kidsServiceOverride = nil
     }
 
     // MARK: - Service overrides when auth is configured
@@ -219,6 +245,8 @@ class WishlistViewModel: ObservableObject {
 //        #if DEBUG
 //        dlog("Starting bootstrap request: baseURL=\(AppConfig.api.baseURL.absoluteString) path=/bootstrap userId=\(AppConfig.devUserId.uuidString)")
 //        #endif
+        loadGeneration += 1
+        let generation = loadGeneration
         isLoading = true
         errorMessage = nil
         do {
@@ -231,6 +259,7 @@ class WishlistViewModel: ObservableObject {
 //            self.giftIdeas = mockData.giftIdeas
 //            #else
             let data = try await effectiveBootstrap.load()
+            guard generation == loadGeneration else { return }
 //            #endif
             dlog("Bootstrap success: user=\(data.0.id) groups=\(data.1.count) kids=\(data.2.count) myItems=\(data.3.count) giftIdeas=\(data.4.count)")
             self.currentUser = data.0
@@ -244,6 +273,7 @@ class WishlistViewModel: ObservableObject {
                 AnalyticsEvents.signUp(method: AnalyticsAuthProvider.last())
             }
         } catch {
+            guard generation == loadGeneration else { return }
             elog("Bootstrap failed: \(String(describing: error))")
             self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         }

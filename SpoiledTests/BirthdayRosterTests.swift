@@ -97,3 +97,14 @@ struct BirthdayRosterTests {
         #expect(BirthdayRoster.people(currentUserId: nil, groups: nil, kids: nil).isEmpty)
     }
 }
+
+struct BirthdayRosterLoadingTests {
+    /// Opening the app offline must not clear reminders that were already scheduled.
+    @Test func thereIsNothingToScheduleBeforeTheFirstLoad() {
+        #expect(BirthdayRoster.peopleToRemind(currentUserId: nil, groups: nil, kids: nil) == nil)
+    }
+
+    @Test func aLoadedAccountWithNobodyToRemindIsAnEmptyListNotNothing() {
+        #expect(BirthdayRoster.peopleToRemind(currentUserId: "me", groups: [], kids: []) == [])
+    }
+}

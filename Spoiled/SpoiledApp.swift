@@ -68,9 +68,9 @@ struct SpoiledApp: App {
                     wishlistViewModel.startAutoRefresh()
                 } else {
                     wishlistViewModel.stopAutoRefresh()
+                    wishlistViewModel.resetForSignOut()
                     ShareSnapshotStore.clear()
-                    // The view model keeps the previous user's roster in memory, so their
-                    // reminders would keep firing unless we drop them here.
+                    // The previous user's reminders would keep firing unless we drop them here.
                     Task { await notifications.cancelAll() }
                 }
             }

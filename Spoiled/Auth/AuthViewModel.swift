@@ -52,8 +52,8 @@ final class AuthViewModel: ObservableObject {
     func signOut() { store.signOut() }
 
     // Expose token retrieval to consumers that need to attach Bearer tokens
-    func getValidIDToken(forceRefresh: Bool) async -> String? {
-        await store.getValidIDToken(forceRefresh: forceRefresh)
+    func getValidIDToken(forceRefresh: Bool) async throws -> String? {
+        try await store.getValidIDToken(forceRefresh: forceRefresh)
     }
 
 }

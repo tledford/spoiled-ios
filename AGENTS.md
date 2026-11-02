@@ -72,7 +72,9 @@ Conversion happens via `asAppModel()` extension methods in `BootstrapService.swi
 
 ### 401 auto-retry
 
-`APIClient.execute()` retries once with a force-refreshed Firebase ID token on HTTP 401. If it still fails, it posts `Notification.Name.authUnauthorized`, which `SpoiledApp` listens to in order to sign the user out.
+`APIClient.execute()` retries once with a force-refreshed Firebase ID token on HTTP 401. It posts `Notification.Name.authUnauthorized`, which `SpoiledApp` listens to in order to sign the user out, only when the session has really ended: the refreshed token was rejected too, or Firebase reports the session is over (`FirebaseSession.isSessionOver`).
+
+Anything temporary must not sign the user out. If a token can't be fetched for another reason, like having no connection, `execute()` throws `APIError.tokenUnavailable` and sends nothing. The worker returns 503 `AUTH_UNAVAILABLE`, not 401, when it can't check a token.
 
 ### Share extension
 
