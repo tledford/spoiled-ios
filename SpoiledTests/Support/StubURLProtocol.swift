@@ -64,8 +64,8 @@ extension Data {
 
     /// A minimal successful `/bootstrap` response. `groups` and `invitations` are JSON arrays, and
     /// leaving `invitations` out matches a server from before they existed.
-    static func bootstrap(userId: String = "me", name: String = "Me", groups: String = "[]", invitations: String? = nil) -> Data {
-        let invitationsField = invitations.map { #","invitations":\#($0)"# } ?? ""
+    static func bootstrap(userId: String = "me", name: String = "Me", groups: String = "[]", invitations: String? = nil, removedPurchases: String? = nil) -> Data {
+        let invitationsField = (invitations.map { #","invitations":\#($0)"# } ?? "") + (removedPurchases.map { #","removedPurchases":\#($0)"# } ?? "")
         return Data("""
         {"currentUser":{"id":"\(userId)","name":"\(name)","email":"\(userId)@example.com","birthdate":null,
         "sizes":{"shirt":"","pants":"","shoes":"","sweatshirt":"","hat":""},"wishlistPurchasesResetDate":null},

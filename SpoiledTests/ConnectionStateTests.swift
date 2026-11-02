@@ -59,7 +59,8 @@ struct BootstrapCacheTests {
                       kids: [Kid(name: "Kid", birthdate: Date(timeIntervalSince1970: 0))],
                       wishlistItems: [WishlistItem(name: "Socks")],
                       giftIdeas: [],
-                      invitations: [GroupInvitation(id: "i", groupId: UUID(), groupName: "Friends", invitedByName: nil, invitedAt: "2026")])
+                      invitations: [GroupInvitation(id: "i", groupId: UUID(), groupName: "Friends", invitedByName: nil, invitedAt: "2026")],
+                      removedPurchases: [RemovedPurchase(itemId: UUID(), itemName: "Mug", itemPrice: 12, recipientName: "Alex", quantity: 1, purchasedAt: nil)])
     }
 
     @Test func savesAndRestoresEverything() {
@@ -76,6 +77,7 @@ struct BootstrapCacheTests {
         #expect(entry?.data.kids == saved.kids)
         #expect(entry?.data.wishlistItems == saved.wishlistItems)
         #expect(entry?.data.invitations == saved.invitations)
+        #expect(entry?.data.removedPurchases == saved.removedPurchases)
         #expect(entry?.data.groups[0].members[0].wishlistItems[0].purchasedQuantity == 2)
     }
 

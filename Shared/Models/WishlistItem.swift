@@ -8,6 +8,17 @@ struct WishlistItemPurchase: Codable, Hashable {
     var purchasedAt: Date?
 }
 
+/// Something the user bought from an item its owner has since deleted.
+struct RemovedPurchase: Identifiable, Codable, Hashable {
+    var id: UUID { itemId }
+    let itemId: UUID
+    let itemName: String
+    let itemPrice: Double?
+    let recipientName: String
+    let quantity: Int
+    let purchasedAt: Date?
+}
+
 struct WishlistItem: Identifiable, Codable, Hashable {
     static let maxQuantityDesired = 99
 

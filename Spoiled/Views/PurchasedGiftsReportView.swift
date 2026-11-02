@@ -247,6 +247,12 @@ private struct WishlistPurchaseRow: View {
             Text(purchased.item.name)
                 .font(.system(size: 15, weight: .semibold))
 
+            if purchased.isRemoved {
+                Label("Removed from wishlist", systemImage: "minus.circle")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.brandGold)
+            }
+
             HStack(spacing: 6) {
                 if purchased.quantity > 1 {
                     Text("Qty \(purchased.quantity)")

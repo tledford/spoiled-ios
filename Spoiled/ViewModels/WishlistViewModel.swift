@@ -13,6 +13,7 @@ class WishlistViewModel: ObservableObject {
     @Published var wishlistItems: [WishlistItem]?
     @Published var giftIdeas: [GiftIdea]?
     @Published var groupInvitations: [GroupInvitation] = []
+    @Published var removedPurchases: [RemovedPurchase] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     /// Why the most recent load failed. Cleared by the next success. Saves report through `errorMessage` instead.
@@ -268,6 +269,7 @@ class WishlistViewModel: ObservableObject {
         wishlistItems = data.wishlistItems
         giftIdeas = data.giftIdeas
         groupInvitations = data.invitations
+        removedPurchases = data.removedPurchases
     }
 
     /// Forgets the signed-in user, so the next account can't see any of their data. A load
@@ -287,6 +289,7 @@ class WishlistViewModel: ObservableObject {
         wishlistItems = nil
         giftIdeas = nil
         groupInvitations = []
+        removedPurchases = []
         isLoading = false
         errorMessage = nil
 
@@ -911,6 +914,8 @@ class WishlistViewModel: ObservableObject {
         let quantity: Int
         /// When the current user last added to that count.
         let purchasedAt: Date?
+        /// The owner has deleted this item since the user bought it.
+        var isRemoved = false
     }
 
     /// Whether a purchase survives the cutoff the user set with their last clear.
@@ -946,6 +951,17 @@ class WishlistViewModel: ObservableObject {
                     collect(kid.wishlistItems, recipientName: kid.name)
                 }
             }
+        }
+
+        for removed in removedPurchases where !seen.contains(removed.itemId) {
+            let purchase = WishlistItemPurchase(userId: userId, quantity: removed.quantity, purchasedAt: removed.purchasedAt)
+            guard isPurchaseVisible(purchase) else { continue }
+            result.append(PurchasedItem(id: removed.itemId,
+                                        item: WishlistItem(id: removed.itemId, name: removed.itemName, price: removed.itemPrice),
+                                        recipientName: removed.recipientName,
+                                        quantity: removed.quantity,
+                                        purchasedAt: removed.purchasedAt,
+                                        isRemoved: true))
         }
 
         return result.sorted { ($0.purchasedAt ?? Date.distantPast) > ($1.purchasedAt ?? Date.distantPast) }

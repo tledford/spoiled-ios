@@ -58,6 +58,12 @@ struct WishlistItemDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    // Here rather than in the navigation bar, which would cut a long name off.
+                    Text(currentItem.name)
+                        .font(.title2.bold())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isHeader)
+
                     // Link preview hero
                     if let link = currentItem.link {
                         LinkPreviewView(url: link)
@@ -156,8 +162,7 @@ struct WishlistItemDetailView: View {
                 .padding(16)
             }
             .background(Color.appBackground)
-            .navigationTitle(currentItem.name)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if presentedAsSheet {
                     ToolbarItem(placement: .cancellationAction) {

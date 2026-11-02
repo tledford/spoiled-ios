@@ -93,19 +93,22 @@ struct GlassSegmentedPicker: View {
 struct MyItemsListView: View {
     @ObservedObject var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
+    @State private var itemToDelete: WishlistItem?
 
     var body: some View {
+        content
+            .deleteItemConfirmation(item: $itemToDelete, viewModel: viewModel, kidId: nil, toastCenter: toastCenter)
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if let items = viewModel.wishlistItems, !items.isEmpty {
             VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: nil, groupId: nil, groupMemberId: nil)
                         .contextMenu {
                             Button(role: .destructive) {
-                                Task {
-                                    let ok = await viewModel.deleteWishlistItem(item, kidId: nil)
-                                    if ok { toastCenter.success("Item deleted") }
-                                    else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
-                                }
+                                itemToDelete = item
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -133,8 +136,20 @@ struct MyItemsListView: View {
 struct KidsItemsListView: View {
     @ObservedObject var viewModel: WishlistViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
+    @State private var itemToDelete: (item: WishlistItem, kidId: UUID)?
 
     var body: some View {
+        content
+            .deleteItemConfirmation(
+                item: Binding(get: { itemToDelete?.item }, set: { if $0 == nil { itemToDelete = nil } }),
+                viewModel: viewModel,
+                kidId: itemToDelete?.kidId,
+                toastCenter: toastCenter
+            )
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if let kids = viewModel.kids, !kids.isEmpty {
             VStack(spacing: 24) {
                 ForEach(kids) { kid in
@@ -157,11 +172,7 @@ struct KidsItemsListView: View {
                                     WishlistItemRow(item: item, viewModel: viewModel, isInGroupView: false, kidId: kid.id, groupId: nil, groupMemberId: nil)
                                         .contextMenu {
                                             Button(role: .destructive) {
-                                                Task {
-                                                    let ok = await viewModel.deleteWishlistItem(item, kidId: kid.id)
-                                                    if ok { toastCenter.success("Item deleted") }
-                                                    else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
-                                                }
+                                                itemToDelete = (item, kid.id)
                                             } label: {
                                                 Label("Delete", systemImage: "trash")
                                             }
@@ -184,6 +195,26 @@ struct KidsItemsListView: View {
                 subtitle: "Add kids in Settings to manage their wishlists"
             )
             .padding(.top, 40)
+        }
+    }
+}
+
+// MARK: - Delete confirmation
+
+private extension View {
+    /// Long-press deletes are easy to hit by accident, so they ask first.
+    func deleteItemConfirmation(item: Binding<WishlistItem?>, viewModel: WishlistViewModel, kidId: UUID?, toastCenter: ToastCenter) -> some View {
+        alert("Delete Item", isPresented: Binding(get: { item.wrappedValue != nil }, set: { if !$0 { item.wrappedValue = nil } }), presenting: item.wrappedValue) { itemToDelete in
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                Task {
+                    let ok = await viewModel.deleteWishlistItem(itemToDelete, kidId: kidId)
+                    if ok { toastCenter.success("Item deleted") }
+                    else { toastCenter.error(viewModel.errorMessage ?? "Failed to delete item") }
+                }
+            }
+        } message: { itemToDelete in
+            Text("Are you sure you want to delete \(itemToDelete.name)? This action cannot be undone.")
         }
     }
 }

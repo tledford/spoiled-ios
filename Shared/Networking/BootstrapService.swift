@@ -9,6 +9,7 @@ struct BootstrapResponse: Decodable {
     let wishlistItems: [APIWishlistItem]
     let giftIdeas: [APIGiftIdea]
     let invitations: [APIGroupInvitation]?
+    let removedPurchases: [APIRemovedPurchase]?
 }
 
 /// Everything `/bootstrap` returns, as app models.
@@ -19,6 +20,7 @@ struct BootstrapData: Codable {
     var wishlistItems: [WishlistItem]
     var giftIdeas: [GiftIdea]
     var invitations: [GroupInvitation]
+    var removedPurchases: [RemovedPurchase]
 }
 
 struct APIUser: Decodable {
@@ -44,6 +46,15 @@ struct APIGroupInvitation: Decodable {
     let groupName: String
     let invitedByName: String?
     let invitedAt: String
+}
+
+struct APIRemovedPurchase: Decodable {
+    let itemId: UUID
+    let itemName: String
+    let itemPrice: Double?
+    let recipientName: String
+    let quantity: Int
+    let purchasedAt: String?
 }
 
 struct APIPendingInvitation: Decodable {
@@ -223,7 +234,15 @@ private extension BootstrapResponse {
                              kids: kids,
                              wishlistItems: wishlistItems.map { $0.asAppModel() },
                              giftIdeas: ideas,
-                             invitations: invitations)
+                             invitations: invitations,
+                             removedPurchases: (removedPurchases ?? []).map { r in
+                                 RemovedPurchase(itemId: r.itemId,
+                                                 itemName: r.itemName,
+                                                 itemPrice: r.itemPrice,
+                                                 recipientName: r.recipientName,
+                                                 quantity: r.quantity,
+                                                 purchasedAt: parseAPIDate(r.purchasedAt))
+                             })
     }
 }
 
