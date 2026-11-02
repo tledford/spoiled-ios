@@ -189,7 +189,7 @@ final class ShareComposerModel: ObservableObject {
             onFinish(true)
         } catch {
             isSaving = false
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Couldn't save. Please try again."
+            errorMessage = error.userFacingMessage
         }
     }
 

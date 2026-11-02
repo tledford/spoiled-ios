@@ -8,6 +8,8 @@ protocol APIRequest: Sendable {
     var headers: [String: String] { get }
     var queryItems: [URLQueryItem]? { get }
     var body: Data? { get }
+    /// How long to wait for the server, when the default isn't right for this request.
+    var timeout: TimeInterval? { get }
 }
 
 extension APIRequest {
@@ -15,6 +17,7 @@ extension APIRequest {
     var headers: [String: String] { [:] }
     var queryItems: [URLQueryItem]? { nil }
     var body: Data? { nil }
+    var timeout: TimeInterval? { nil }
 }
 
 extension Notification.Name {
@@ -47,6 +50,7 @@ struct APIClient {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = request.method
         urlRequest.httpBody = request.body
+        if let timeout = request.timeout { urlRequest.timeoutInterval = timeout }
 
         // Default headers
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")

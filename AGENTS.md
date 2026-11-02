@@ -58,6 +58,14 @@ To hit the local worker from the app, see Environment switching below.
 
 The app loads all state in a single call to `GET /api/v1/bootstrap`. `BootstrapService` decodes the response into `API*` intermediary types, then maps them to app models. If the user doesn't exist (404 `NOT_FOUND`), it auto-creates the user and retries.
 
+### When a load fails
+
+`WishlistViewModel.load()` reports through `loadFailure`, never `errorMessage`, which is only for saves. `ContentView` shows the tabs only once there's a `currentUser`; otherwise it shows `ConnectionErrorView`, so a failed load can't pass for an empty account. With data on screen, `StaleDataBanner` says it may be out of date.
+
+Failed loads retry at 5, 15, 30 and 60 seconds, then wait for the 5-minute timer, and retry immediately when `ConnectionMonitor` sees the connection return. `BootstrapCache` keeps the last good bootstrap on disk so the app opens with data offline, and is deleted on sign-out. There is no offline queue: saves fail and roll back.
+
+Show errors with `error.userFacingMessage`. Status codes and request IDs belong in logs.
+
 ### Dual model pattern
 
 Every resource has:

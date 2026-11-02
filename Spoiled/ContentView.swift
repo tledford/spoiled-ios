@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var wishlistViewModel: WishlistViewModel
+    @EnvironmentObject private var auth: AuthViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
     @EnvironmentObject private var notificationSettings: BirthdayNotificationSettings
     @EnvironmentObject private var notifications: BirthdayNotificationCoordinator
@@ -20,17 +21,26 @@ struct ContentView: View {
     private static let coverTimeoutSeconds: UInt64 = 15
 
     /// The cover stays up until the first bootstrap lands, and never for less than
-    /// `minimumCoverSeconds`. An error or the timeout releases it too, so a failed load
-    /// shows the real (empty) app and its toast rather than an endless gift.
+    /// `minimumCoverSeconds`. A failure or the timeout releases it too, so a stalled or
+    /// failed load gets an explanation rather than an endless gift.
     private var isInitialLoading: Bool {
         if coverTimedOut { return false }
-        let dataSettled = wishlistViewModel.currentUser != nil || wishlistViewModel.errorMessage != nil
+        let dataSettled = wishlistViewModel.currentUser != nil || wishlistViewModel.loadFailure != nil
         return !(minimumCoverElapsed && dataSettled)
     }
 
     var body: some View {
         ZStack {
-            tabs
+            // The tabs need data. Without it they'd make a failed load look like an empty account.
+            if wishlistViewModel.currentUser != nil {
+                tabs
+            } else if !isInitialLoading {
+                ConnectionErrorView(
+                    failure: wishlistViewModel.loadFailure,
+                    onRetry: { Task { await wishlistViewModel.load() } },
+                    onSignOut: { auth.signOut() }
+                )
+            }
             if isInitialLoading {
                 AppLoadingView(namespace: giftNamespace)
                     .transition(.opacity)
@@ -73,6 +83,15 @@ struct ContentView: View {
         .overlay(alignment: .top) {
             if wishlistViewModel.isLoading {
                 ProgressView().padding(.top, 8)
+            }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if wishlistViewModel.showsStaleDataBanner, let failure = wishlistViewModel.loadFailure {
+                StaleDataBanner(
+                    failure: failure,
+                    lastLoadedAt: wishlistViewModel.lastLoadedAt,
+                    onRetry: { Task { await wishlistViewModel.load() } }
+                )
             }
         }
         .toast(toastCenter)

@@ -156,7 +156,7 @@ struct EditProfileView: View {
             toastCenter.success("Profile updated")
             dismiss()
         } catch {
-            let msg = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            let msg = error.userFacingMessage
             errorMessage = msg
             toastCenter.error(msg)
         }

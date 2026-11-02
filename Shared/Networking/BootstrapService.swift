@@ -105,7 +105,12 @@ struct APIGiftIdea: Decodable {
     let isPurchased: Bool?
 }
 
-struct BootstrapRequest: APIRequest { typealias Response = BootstrapResponse; let path = "/bootstrap" }
+struct BootstrapRequest: APIRequest {
+    typealias Response = BootstrapResponse
+    let path = "/bootstrap"
+    // Shorter than the loading cover's 15 seconds, so a dead connection gets a real answer before it lifts.
+    let timeout: TimeInterval? = 12
+}
 
 struct BootstrapService {
     let client: APIClient
