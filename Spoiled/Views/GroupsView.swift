@@ -67,6 +67,7 @@ struct GroupsView: View {
                 .padding(.bottom, 32)
             }
             .background(Color.appBackground.ignoresSafeArea())
+            .staleDataBanner()
             .navigationTitle("My Groups")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }

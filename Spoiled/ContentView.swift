@@ -84,15 +84,6 @@ struct ContentView: View {
                 ProgressView().padding(.top, 8)
             }
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if wishlistViewModel.showsStaleDataBanner, let failure = wishlistViewModel.loadFailure {
-                StaleDataBanner(
-                    failure: failure,
-                    lastLoadedAt: wishlistViewModel.lastLoadedAt,
-                    onRetry: { Task { await wishlistViewModel.load() } }
-                )
-            }
-        }
         .toast(toastCenter)
         .sheet(isPresented: $wishlistViewModel.needsProfileSetup) {
             EditProfileView(viewModel: wishlistViewModel)

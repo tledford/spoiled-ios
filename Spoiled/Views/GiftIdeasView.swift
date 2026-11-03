@@ -82,6 +82,7 @@ struct GiftIdeasView: View {
                     .background(Color.appBackground.ignoresSafeArea())
                 }
             }
+            .staleDataBanner()
             .navigationTitle("Gift Ideas")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }

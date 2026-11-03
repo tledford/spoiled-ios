@@ -32,6 +32,7 @@ struct MyWishlistView: View {
                 .padding(.bottom, 32)
             }
             .background(Color.appBackground.ignoresSafeArea())
+            .staleDataBanner()
             .navigationTitle("My Wishlist")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -48,7 +49,7 @@ struct MyWishlistView: View {
             .sheet(isPresented: $showingAddItemSheet) {
                 AddWishlistItemView(isForKid: selectedTab == "Kids Items")
             }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refreshAll() }
         }
         .trackScreen("my_wishlist")
     }

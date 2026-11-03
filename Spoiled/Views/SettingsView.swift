@@ -149,6 +149,7 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.appBackground.ignoresSafeArea())
+            .staleDataBanner()
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .alert("Delete Account?", isPresented: $showDeleteConfirm) {

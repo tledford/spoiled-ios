@@ -446,8 +446,11 @@ class WishlistViewModel: ObservableObject {
     }
 
     // Unified refresh entry point (can show loading spinner)
+    /// For pull to refresh. SwiftUI cancels a refresh's task when the screen redraws partway
+    /// through, which `load()` itself causes, and that cancelled the request before it was sent.
+    /// A task of its own isn't cancelled with it.
     func refreshAll() async {
-        await load()
+        await Task { await load() }.value
     }
     
     func addWishlistItem(_ item: WishlistItem, kidId: UUID?) async -> Bool {

@@ -60,7 +60,9 @@ The app loads all state in a single call to `GET /api/v1/bootstrap`. `BootstrapS
 
 ### When a load fails
 
-`WishlistViewModel.load()` reports through `loadFailure`, never `errorMessage`, which is only for saves. `ContentView` shows the tabs only once there's a `currentUser`; otherwise it shows `ConnectionErrorView`, so a failed load can't pass for an empty account. With data on screen, `StaleDataBanner` says it may be out of date.
+`WishlistViewModel.load()` reports through `loadFailure`, never `errorMessage`, which is only for saves. `ContentView` shows the tabs only once there's a `currentUser`; otherwise it shows `ConnectionErrorView`, so a failed load can't pass for an empty account. With data on screen, `StaleDataBanner` says it may be out of date. It sits above the tab bar, added to each tab's root screen with `.staleDataBanner()`. Don't move it to the top: the navigation bar covers it from outside the `NavigationStack`, and from inside, tabs opened while it shows lose their large title.
+
+Pull to refresh goes through `refreshAll()`, which runs `load()` in a task of its own. SwiftUI cancels a refresh's task when the screen redraws, and `load()` redraws it straight away.
 
 Failed loads retry at 5, 15, 30 and 60 seconds, then wait for the 5-minute timer, and retry immediately when `ConnectionMonitor` sees the connection return. `BootstrapCache` keeps the last good bootstrap on disk so the app opens with data offline, and is deleted on sign-out. There is no offline queue: saves fail and roll back.
 

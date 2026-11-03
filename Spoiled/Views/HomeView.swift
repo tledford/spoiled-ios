@@ -49,6 +49,7 @@ struct HomeView: View {
                 .padding(.bottom, 32)
             }
             .background(Color.appBackground.ignoresSafeArea())
+            .staleDataBanner()
             .navigationTitle("Spoiled")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }

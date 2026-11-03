@@ -92,10 +92,44 @@ struct StaleDataBanner: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
-            .background(Color.brandGold.opacity(0.18))
+            // Opaque, so rows scrolling under it don't show through.
+            .background {
+                let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+                shape.fill(Color.appBackground)
+                    .overlay(shape.fill(Color.brandGold.opacity(0.18)))
+                    .overlay(shape.strokeBorder(Color.brandGold.opacity(0.35)))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityHint("Tries to refresh")
+    }
+}
+
+extension View {
+    /// Shows `StaleDataBanner` above the tab bar when it's needed. Apply it to a tab's root content.
+    ///
+    /// It isn't at the top: outside the `NavigationStack` the navigation bar drew over it, and inside
+    /// it the large title went missing on any tab first opened while the banner showed.
+    func staleDataBanner() -> some View {
+        modifier(StaleDataBannerPlacement())
+    }
+}
+
+private struct StaleDataBannerPlacement: ViewModifier {
+    @EnvironmentObject private var viewModel: WishlistViewModel
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom, spacing: 0) {
+            if viewModel.showsStaleDataBanner, let failure = viewModel.loadFailure {
+                StaleDataBanner(
+                    failure: failure,
+                    lastLoadedAt: viewModel.lastLoadedAt,
+                    onRetry: { Task { await viewModel.load() } }
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            }
+        }
     }
 }
