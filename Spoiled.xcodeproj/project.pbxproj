@@ -56,11 +56,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		65C0DE0000000000000000F1 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Config/Debug.xcconfig; sourceTree = "<group>"; };
 		652DAB432D26527600792D89 /* Spoiled.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Spoiled.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		652DAB532D26527700792D89 /* SpoiledTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpoiledTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		652DAB5D2D26527700792D89 /* SpoiledUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpoiledUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		65C0DE0000000000000000A2 /* SpoiledShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpoiledShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		65C0DE0000000000000000F1 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Config/Debug.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
