@@ -31,23 +31,32 @@ struct ShareSnapshot: Codable, Equatable {
     }
 }
 
-enum ShareSnapshotStore {
+struct ShareSnapshotStore: Sendable {
+    /// The App Group copy the share extension reads.
+    static let shared = ShareSnapshotStore(suiteName: SharedContainer.appGroupId)
+
     private static let key = "share.snapshot.v1"
 
-    static func save(_ snapshot: ShareSnapshot) {
-        guard let defaults = SharedContainer.defaults,
+    /// Tests pass a suite of their own. Every view model writes its snapshot here, so tests
+    /// sharing the App Group copy overwrite each other's.
+    let suiteName: String
+
+    private var defaults: UserDefaults? { UserDefaults(suiteName: suiteName) }
+
+    func save(_ snapshot: ShareSnapshot) {
+        guard let defaults,
               let data = try? JSONEncoder().encode(snapshot) else { return }
-        defaults.set(data, forKey: key)
+        defaults.set(data, forKey: Self.key)
     }
 
-    static func load() -> ShareSnapshot? {
-        guard let defaults = SharedContainer.defaults,
-              let data = defaults.data(forKey: key) else { return nil }
+    func load() -> ShareSnapshot? {
+        guard let defaults,
+              let data = defaults.data(forKey: Self.key) else { return nil }
         return try? JSONDecoder().decode(ShareSnapshot.self, from: data)
     }
 
-    static func clear() {
-        SharedContainer.defaults?.removeObject(forKey: key)
+    func clear() {
+        defaults?.removeObject(forKey: Self.key)
     }
 }
 

@@ -79,7 +79,7 @@ struct SpoiledApp: App {
                 } else {
                     wishlistViewModel.stopAutoRefresh()
                     wishlistViewModel.resetForSignOut()
-                    ShareSnapshotStore.clear()
+                    ShareSnapshotStore.shared.clear()
                     // The previous user's reminders would keep firing unless we drop them here.
                     Task { await notifications.cancelAll() }
                 }

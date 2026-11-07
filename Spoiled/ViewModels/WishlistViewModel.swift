@@ -117,7 +117,7 @@ class WishlistViewModel: ObservableObject {
         #endif
     }
 
-    init(bootstrapService: BootstrapService = BootstrapService(), usersService: UsersService = UsersService(), giftIdeasService: GiftIdeasService = GiftIdeasService(), wishlistService: WishlistService = WishlistService(), groupsService: GroupsService = GroupsService(), kidsService: KidsService = KidsService(), cache: BootstrapCache = .shared, retryDelays: [TimeInterval] = [5, 15, 30, 60]) {
+    init(bootstrapService: BootstrapService = BootstrapService(), usersService: UsersService = UsersService(), giftIdeasService: GiftIdeasService = GiftIdeasService(), wishlistService: WishlistService = WishlistService(), groupsService: GroupsService = GroupsService(), kidsService: KidsService = KidsService(), cache: BootstrapCache = .shared, snapshotStore: ShareSnapshotStore = .shared, retryDelays: [TimeInterval] = [5, 15, 30, 60]) {
         self.cache = cache
         self.retryDelays = retryDelays
         self.bootstrapService = bootstrapService
@@ -133,10 +133,10 @@ class WishlistViewModel: ObservableObject {
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
             .sink { user, kids, groups, giftIdeas in
                 guard let user else { return }
-                ShareSnapshotStore.save(ShareSnapshot(user: user,
-                                                      kids: kids ?? [],
-                                                      groups: groups ?? [],
-                                                      giftIdeas: giftIdeas ?? []))
+                snapshotStore.save(ShareSnapshot(user: user,
+                                                 kids: kids ?? [],
+                                                 groups: groups ?? [],
+                                                 giftIdeas: giftIdeas ?? []))
             }
     }
 
