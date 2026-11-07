@@ -60,6 +60,7 @@
 		652DAB532D26527700792D89 /* SpoiledTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpoiledTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		652DAB5D2D26527700792D89 /* SpoiledUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpoiledUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		65C0DE0000000000000000A2 /* SpoiledShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpoiledShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		65C0DE0000000000000000F1 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Config/Debug.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -155,6 +156,7 @@
 		652DAB3A2D26527600792D89 = {
 			isa = PBXGroup;
 			children = (
+				65C0DE0000000000000000F1 /* Debug.xcconfig */,
 				65C0DE0000000000000000A4 /* Shared */,
 				652DAB452D26527600792D89 /* Spoiled */,
 				65C0DE0000000000000000A3 /* SpoiledShare */,
@@ -414,6 +416,7 @@
 /* Begin XCBuildConfiguration section */
 		652DAB652D26527700792D89 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 65C0DE0000000000000000F1 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -538,13 +541,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Spoiled/Spoiled.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_ASSET_PATHS = "\"Spoiled/Preview Content\"";
 				DEVELOPMENT_TEAM = VNF829NW96;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Spoiled/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Spoiled;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connects to a development server on this network.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -554,7 +558,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.1.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tomled.Spoiled;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -570,7 +574,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Spoiled/Spoiled.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_ASSET_PATHS = "\"Spoiled/Preview Content\"";
 				DEVELOPMENT_TEAM = VNF829NW96;
 				ENABLE_PREVIEWS = YES;
@@ -586,7 +590,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.1.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tomled.Spoiled;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -672,7 +676,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SpoiledShare/SpoiledShare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = VNF829NW96;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SpoiledShare/Info.plist;
@@ -682,7 +686,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tomled.Spoiled.Share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -697,7 +701,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SpoiledShare/SpoiledShare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = VNF829NW96;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SpoiledShare/Info.plist;
@@ -707,7 +711,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tomled.Spoiled.Share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

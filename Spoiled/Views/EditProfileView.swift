@@ -53,10 +53,9 @@ struct EditProfileView: View {
                             Divider().padding(.leading, 16)
                             
                             fieldRow(label: "Email") {
-                                TextField("Enter email", text: $email)
-                                    .textInputAutocapitalization(.never)
-                                    .keyboardType(.emailAddress)
-                                    .autocorrectionDisabled()
+                                // Comes from the sign-in provider, so people can't claim someone else's address.
+                                Text(email)
+                                    .foregroundStyle(.secondary)
                                     .multilineTextAlignment(.trailing)
                             }
                             
@@ -112,7 +111,7 @@ struct EditProfileView: View {
                         Text(isSaving ? "Saving…" : "Save")
                             .navButton(isIcon: false)
                     }
-                    .disabled(isSaving || name.isEmpty || email.isEmpty)
+                    .disabled(isSaving || name.isEmpty)
                 }
             }
         }
@@ -123,10 +122,10 @@ struct EditProfileView: View {
     private func fieldRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 15, weight: .medium))
+                .font(.subheadline.weight(.medium))
             Spacer()
             content()
-                .font(.system(size: 15))
+                .font(.subheadline)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -157,7 +156,7 @@ struct EditProfileView: View {
             toastCenter.success("Profile updated")
             dismiss()
         } catch {
-            let msg = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            let msg = error.userFacingMessage
             errorMessage = msg
             toastCenter.error(msg)
         }

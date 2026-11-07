@@ -10,6 +10,12 @@ struct HomeView: View {
 
     @EnvironmentObject private var viewModel: WishlistViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Side by side there's no room for the largest text sizes, so the cards stack instead.
+    private var cardLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,12 +27,13 @@ struct HomeView: View {
                         showsGift: showsGift
                     )
 
-                    HStack(spacing: 12) {
+                    cardLayout {
                         ChristmasCountdownCard(days: daysUntilChristmas)
                         UpcomingBirthdayCountCard(count: birthdaysWithinTwoMonthsCount)
                     }
 
                     QuickStatsRow(
+                        layout: dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10)),
                         purchased: giftsIHavePurchasedCount,
                         activeWishlist: myActiveWishlistCount,
                         giftIdeas: giftIdeasCount
@@ -42,6 +49,7 @@ struct HomeView: View {
                 .padding(.bottom, 32)
             }
             .background(Color.appBackground.ignoresSafeArea())
+            .staleDataBanner()
             .navigationTitle("Spoiled")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refreshAll() }
@@ -136,14 +144,15 @@ private struct GreetingHeader: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text("\(greeting), \(firstName)!")
-                    .font(.system(size: 26, weight: .bold))
+                    .scaledFont(size: 26, relativeTo: .title, weight: .bold)
                     .foregroundStyle(.primary)
                 // Hidden until the loading cover hands the gift over, so only one copy
                 // of the matched view exists at a time.
                 if showsGift {
                     Text("🎁")
-                        .font(.system(size: 26))
+                        .scaledFont(size: 26, relativeTo: .title)
                         .matchedGeometryEffect(id: AppLoadingView.giftID, in: giftNamespace)
+                        .accessibilityHidden(true)
                 }
             }
             Text(Self.dateFormatter.string(from: Date()))
@@ -152,6 +161,8 @@ private struct GreetingHeader: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -174,25 +185,25 @@ private struct ChristmasCountdownCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 if days == 0 {
                     Text("🎄")
-                        .font(.system(size: 30))
+                        .scaledFont(size: 30, relativeTo: .title)
                     Text("Merry\nChristmas!")
-                        .font(.system(size: 15, weight: .black))
+                        .font(.subheadline.weight(.black))
                         .foregroundStyle(.white)
                         .lineLimit(2)
                 } else {
                     Text("\(days)")
-                        .font(.system(size: 44, weight: .black, design: .rounded))
+                        .scaledFont(size: 44, relativeTo: .largeTitle, weight: .black, design: .rounded)
                         .foregroundStyle(Color.brandGold)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                     HStack(alignment: .center, spacing: 6) {
                         Text("days until\nChristmas")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.white.opacity(0.85))
-                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                         Spacer()
                         Image(systemName: "gift.fill")
-                            .font(.system(size: 24))
+                            .scaledFont(size: 24, relativeTo: .title2)
                             .foregroundStyle(Color.brandGold.opacity(0.35))
                     }
                 }
@@ -202,6 +213,8 @@ private struct ChristmasCountdownCard: View {
             .padding(.vertical, 14)
         }
         .shadow(color: Color.brandGold.opacity(0.2), radius: 16, x: 0, y: 6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(days == 0 ? "Merry Christmas!" : "\(days) days until Christmas")
     }
 }
 
@@ -223,18 +236,18 @@ private struct UpcomingBirthdayCountCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(count)")
-                    .font(.system(size: 44, weight: .black, design: .rounded))
+                    .scaledFont(size: 44, relativeTo: .largeTitle, weight: .black, design: .rounded)
                     .foregroundStyle(Color(red: 0.65, green: 0.96, blue: 0.96))
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                 HStack(alignment: .center, spacing: 6) {
                     Text(count == 1 ? "birthday in\n2 months" : "birthdays in\n2 months")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer()
                     Image(systemName: "birthday.cake.fill")
-                        .font(.system(size: 24))
+                        .scaledFont(size: 24, relativeTo: .title2)
                         .foregroundStyle(Color(red: 0.65, green: 0.96, blue: 0.96).opacity(0.35))
                 }
             }
@@ -243,18 +256,21 @@ private struct UpcomingBirthdayCountCard: View {
             .padding(.vertical, 14)
         }
         .shadow(color: Color.teal.opacity(0.25), radius: 12, x: 0, y: 5)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(count == 1 ? "1 birthday in the next 2 months" : "\(count) birthdays in the next 2 months")
     }
 }
 
 // MARK: - Quick Stats Row
 
 private struct QuickStatsRow: View {
+    let layout: AnyLayout
     let purchased: Int
     let activeWishlist: Int
     let giftIdeas: Int
 
     var body: some View {
-        HStack(spacing: 10) {
+        layout {
             NavigationLink(destination: PurchasedGiftsReportView()) {
                 StatCard(icon: "gift.fill", value: "\(purchased)", label: "Purchased", tint: Color.brandGold)
             }
@@ -282,16 +298,16 @@ private struct StatCard: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 18, weight: .semibold))
+                .scaledFont(size: 18, relativeTo: .body, weight: .semibold)
                 .foregroundStyle(tint)
+                .accessibilityHidden(true)
             Text(value)
-                .font(.system(size: 26, weight: .black, design: .rounded))
+                .scaledFont(size: 26, relativeTo: .title, weight: .black, design: .rounded)
                 .foregroundStyle(.primary)
             Text(label)
-                .font(.system(size: 11, weight: .medium))
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
@@ -326,6 +342,7 @@ private struct BirthdaySectionCard: View {
 
 private struct BirthdayRow: View {
     let entry: HomeView.BirthdayEntry
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -340,18 +357,22 @@ private struct BirthdayRow: View {
     var body: some View {
         HStack(spacing: 12) {
             PersonAvatar(name: entry.name, size: 36)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.name)
-                    .font(.system(size: 15, weight: .semibold))
-                Text(Self.dateFormatter.string(from: birthdateThisYear))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            // Beside the name there's no room for the badge at the largest text sizes.
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 12))) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.name)
+                        .font(.subheadline.weight(.semibold))
+                    Text(Self.dateFormatter.string(from: birthdateThisYear))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                BirthdayBadge(daysUntil: entry.daysUntil)
             }
-            Spacer()
-            BirthdayBadge(daysUntil: entry.daysUntil)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -364,12 +385,16 @@ private struct SectionHeader: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.brandGold)
+                .accessibilityHidden(true)
             Text(title.uppercased())
-                .font(.system(size: 12, weight: .bold))
+                .font(.caption.weight(.bold))
                 .tracking(0.8)
                 .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isHeader)
     }
 }

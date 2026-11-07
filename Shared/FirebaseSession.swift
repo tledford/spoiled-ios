@@ -15,13 +15,30 @@ enum FirebaseSession {
     /// keychain item (`AuthStoredUserManager`, keyed by project id and an explicit access
     /// group), does not carry the existing user over to it, and deletes the legacy item — which
     /// signs every existing user out on first launch after the update.
-    static var tokenProvider: (Bool) async -> String? {
+    static var tokenProvider: (Bool) async throws -> String? {
         { forceRefresh in
             guard let user = Auth.auth().currentUser else { return nil }
-            if forceRefresh {
-                return try? await user.getIDTokenResult(forcingRefresh: true).token
+            do {
+                if forceRefresh {
+                    return try await user.getIDTokenResult(forcingRefresh: true).token
+                }
+                return try await user.getIDToken()
+            } catch {
+                throw isSessionOver(error) ? APIError.sessionOver : APIError.tokenUnavailable
             }
-            return try? await user.getIDToken()
+        }
+    }
+
+    /// Whether a failed token request means the session has really ended. Anything else, like
+    /// having no connection, is temporary and must not sign the user out.
+    static func isSessionOver(_ error: Error) -> Bool {
+        let error = error as NSError
+        guard error.domain == AuthErrors.domain, let code = AuthErrorCode(rawValue: error.code) else { return false }
+        switch code {
+        case .userTokenExpired, .invalidUserToken, .userDisabled, .userNotFound:
+            return true
+        default:
+            return false
         }
     }
 }

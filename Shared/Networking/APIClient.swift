@@ -1,5 +1,4 @@
 import Foundation
-import FirebaseAuth
 import Combine
 
 protocol APIRequest: Sendable {
@@ -9,6 +8,8 @@ protocol APIRequest: Sendable {
     var headers: [String: String] { get }
     var queryItems: [URLQueryItem]? { get }
     var body: Data? { get }
+    /// How long to wait for the server, when the default isn't right for this request.
+    var timeout: TimeInterval? { get }
 }
 
 extension APIRequest {
@@ -16,6 +17,7 @@ extension APIRequest {
     var headers: [String: String] { [:] }
     var queryItems: [URLQueryItem]? { nil }
     var body: Data? { nil }
+    var timeout: TimeInterval? { nil }
 }
 
 extension Notification.Name {
@@ -25,12 +27,18 @@ extension Notification.Name {
 struct APIClient {
     let config: APIConfig
     let urlSession: URLSession
-    var tokenProvider: ((Bool) async -> String?)?
+    /// The signed-in user's token, or nil if nobody is signed in. Throws `APIError.tokenUnavailable` or `.sessionOver`.
+    var tokenProvider: ((Bool) async throws -> String?)?
+    var onSessionEnded: @Sendable () -> Void
 
-    init(config: APIConfig = AppConfig.api, urlSession: URLSession = .shared, tokenProvider: ((Bool) async -> String?)? = nil) {
+    init(config: APIConfig = AppConfig.api,
+         urlSession: URLSession = .shared,
+         tokenProvider: ((Bool) async throws -> String?)? = FirebaseSession.tokenProvider,
+         onSessionEnded: @escaping @Sendable () -> Void = { NotificationCenter.default.post(name: .authUnauthorized, object: nil) }) {
         self.config = config
         self.urlSession = urlSession
         self.tokenProvider = tokenProvider
+        self.onSessionEnded = onSessionEnded
     }
 
     func execute<R: APIRequest>(_ request: R) async throws -> R.Response {
@@ -42,60 +50,61 @@ struct APIClient {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = request.method
         urlRequest.httpBody = request.body
+        if let timeout = request.timeout { urlRequest.timeoutInterval = timeout }
 
         // Default headers
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
         if request.body != nil {
             urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
-        // Firebase Bearer token via provider
-        if let token = await tokenProvider?(false) {
-            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        } else if let user = Auth.auth().currentUser, let token = try? await user.getIDToken() {
-            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        } else if let user = Auth.auth().currentUser, let token = try? await user.getIDTokenResult(forcingRefresh: true).token {
-            // As a last resort, force-refresh once to prime the token on first load
+        let token = try await currentToken(forceRefresh: false)
+        if let token {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         // Merge custom headers last
         for (k, v) in request.headers { urlRequest.setValue(v, forHTTPHeaderField: k) }
 
         var (data, response) = try await urlSession.data(for: urlRequest)
-        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        guard var http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
 
-        // On 401, try one forced refresh of the ID token and retry once
-        if http.statusCode == 401 {
-            if let fresh = await tokenProvider?(true) {
-                var retryReq = urlRequest
-                retryReq.setValue("Bearer \(fresh)", forHTTPHeaderField: "Authorization")
-                (data, response) = try await urlSession.data(for: retryReq)
-            } else if let user = Auth.auth().currentUser, let fresh = try? await user.getIDTokenResult(forcingRefresh: true).token {
-                var retryReq = urlRequest
-                retryReq.setValue("Bearer \(fresh)", forHTTPHeaderField: "Authorization")
-                (data, response) = try await urlSession.data(for: retryReq)
+        // A rejected token may just be out of date. If its replacement is rejected too, the session is over.
+        if http.statusCode == 401, token != nil {
+            guard let fresh = try await currentToken(forceRefresh: true) else {
+                onSessionEnded()
+                throw APIError.sessionOver
             }
+            urlRequest.setValue("Bearer \(fresh)", forHTTPHeaderField: "Authorization")
+            (data, response) = try await urlSession.data(for: urlRequest)
+            guard let retried = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+            http = retried
+            if http.statusCode == 401 { onSessionEnded() }
         }
 
-        guard let http2 = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-
-        if !(200..<300).contains(http2.statusCode) {
-            if http2.statusCode == 401 {
-                NotificationCenter.default.post(name: .authUnauthorized, object: nil)
-            }
+        if !(200..<300).contains(http.statusCode) {
             let requestId = http.allHeaderFields["X-Request-Id"] as? String
             // Try to decode error payload and optional reqId passthrough
             if let apiErrorWithReq = try? JSONDecoder().decode(APIErrorResponseWithReqId.self, from: data) {
-                throw APIError.http(status: http2.statusCode, code: apiErrorWithReq.error.code, message: apiErrorWithReq.error.message, requestId: apiErrorWithReq.reqId ?? requestId, rawBody: nil)
+                throw APIError.http(status: http.statusCode, code: apiErrorWithReq.error.code, message: apiErrorWithReq.error.message, requestId: apiErrorWithReq.reqId ?? requestId, rawBody: nil)
             } else if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
-                throw APIError.http(status: http2.statusCode, code: apiError.error.code, message: apiError.error.message, requestId: requestId, rawBody: nil)
+                throw APIError.http(status: http.statusCode, code: apiError.error.code, message: apiError.error.message, requestId: requestId, rawBody: nil)
             }
             let fallback = String(data: data, encoding: .utf8)
-            throw APIError.http(status: http2.statusCode, code: "HTTP_\(http2.statusCode)", message: fallback ?? "Unknown error", requestId: requestId, rawBody: fallback)
+            throw APIError.http(status: http.statusCode, code: "HTTP_\(http.statusCode)", message: fallback ?? "Unknown error", requestId: requestId, rawBody: fallback)
         }
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(R.Response.self, from: data)
+    }
+
+    private func currentToken(forceRefresh: Bool) async throws -> String? {
+        guard let tokenProvider else { return nil }
+        do {
+            return try await tokenProvider(forceRefresh)
+        } catch APIError.sessionOver {
+            onSessionEnded()
+            throw APIError.sessionOver
+        }
     }
 }
 
@@ -119,6 +128,10 @@ struct APIErrorPayload: Decodable { let code: String; let message: String }
 enum APIError: Error, LocalizedError {
     case http(status: Int, code: String, message: String, requestId: String?, rawBody: String?)
     case decoding(Error)
+    /// No token for now, for a temporary reason like having no connection. The session is still good.
+    case tokenUnavailable
+    /// Firebase says this session has ended, so the user has to sign in again.
+    case sessionOver
 
     var errorDescription: String? {
         switch self {
@@ -127,6 +140,10 @@ enum APIError: Error, LocalizedError {
             return "HTTP \(status) [\(code)]: \(message)"
         case .decoding(let e):
             return "Decoding error: \(e.localizedDescription)"
+        case .tokenUnavailable:
+            return "Couldn't confirm your sign-in. Check your connection and try again."
+        case .sessionOver:
+            return "Your session has ended. Please sign in again."
         }
     }
 }

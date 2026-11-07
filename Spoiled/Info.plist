@@ -17,5 +17,9 @@
 			</array>
 		</dict>
 	</array>
+	<key>SpoiledLocalAPIHost</key>
+	<string>$(SPOILED_LOCAL_API_HOST)</string>
+	<key>SpoiledLocalAPIPort</key>
+	<string>$(SPOILED_LOCAL_API_PORT)</string>
 </dict>
 </plist>

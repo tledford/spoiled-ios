@@ -3,6 +3,7 @@ import SwiftUI
 import OSLog
 import Combine
 import FirebaseAnalytics
+import FirebaseCrashlytics
 
 @MainActor
 class WishlistViewModel: ObservableObject {
@@ -11,8 +12,17 @@ class WishlistViewModel: ObservableObject {
     @Published var groups: [Group]?
     @Published var wishlistItems: [WishlistItem]?
     @Published var giftIdeas: [GiftIdea]?
+    @Published var groupInvitations: [GroupInvitation] = []
+    @Published var removedPurchases: [RemovedPurchase] = []
+    /// A brand-new account, which needs to finish its profile.
+    @Published var needsProfileSetup = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    /// Why the most recent load failed. Cleared by the next success. Saves report through `errorMessage` instead.
+    @Published private(set) var loadFailure: LoadFailure?
+    /// When the data on screen came from the server, which may be from an earlier session's cache.
+    @Published private(set) var lastLoadedAt: Date?
+    @Published private var consecutiveLoadFailures = 0
     @Published var isSavingGiftIdea: Bool = false
     @Published var deletingGiftIdeaIds: Set<UUID> = []
     @Published var isSavingWishlistItem: Bool = false
@@ -27,9 +37,28 @@ class WishlistViewModel: ObservableObject {
 
     private var snapshotCancellable: AnyCancellable?
 
+    private let cache: BootstrapCache
+    private let connectionMonitor = ConnectionMonitor()
+    /// How long to wait between automatic retries after a failed load. After the last one, the refresh timer takes over.
+    private let retryDelays: [TimeInterval]
+    private var retryTask: Task<Void, Never>?
+    private var retryCount = 0
+    /// True while the app is in front and signed in, which is the only time retrying makes sense.
+    private var isAutoRefreshing = false
+
+    /// There's data to show, but it may be out of date. One failed refresh could be a blip, so wait
+    /// for a second unless the device is plainly offline.
+    var showsStaleDataBanner: Bool {
+        guard currentUser != nil, let loadFailure else { return false }
+        return loadFailure == .offline || consecutiveLoadFailures >= 2
+    }
+
     /// Start the auto-refresh timer. Only call when authenticated and app is active.
     func startAutoRefresh() {
         stopAutoRefresh()
+        isAutoRefreshing = true
+        retryCount = 0
+        connectionMonitor.start { [weak self] in self?.connectionRestored() }
         refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
             Task { await self?.load() }
         }
@@ -39,7 +68,33 @@ class WishlistViewModel: ObservableObject {
     func stopAutoRefresh() {
         refreshTimer?.invalidate()
         refreshTimer = nil
+        isAutoRefreshing = false
+        retryTask?.cancel()
+        retryTask = nil
     }
+
+    /// The device has a connection again, so anything that failed is worth trying now.
+    func connectionRestored() {
+        guard isAutoRefreshing, loadFailure != nil else { return }
+        retryCount = 0
+        retryTask?.cancel()
+        Task { await load() }
+    }
+
+    private func scheduleRetry() {
+        guard isAutoRefreshing, retryCount < retryDelays.count else { return }
+        let delay = retryDelays[retryCount]
+        retryCount += 1
+        retryTask?.cancel()
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            await self?.load()
+        }
+    }
+
+    /// Bumped by every load and by sign-out, so a response that's been overtaken can be ignored.
+    private var loadGeneration = 0
 
     private let bootstrapService: BootstrapService
     private let usersService: UsersService
@@ -62,7 +117,9 @@ class WishlistViewModel: ObservableObject {
         #endif
     }
 
-    init(bootstrapService: BootstrapService = BootstrapService(), usersService: UsersService = UsersService(), giftIdeasService: GiftIdeasService = GiftIdeasService(), wishlistService: WishlistService = WishlistService(), groupsService: GroupsService = GroupsService(), kidsService: KidsService = KidsService()) {
+    init(bootstrapService: BootstrapService = BootstrapService(), usersService: UsersService = UsersService(), giftIdeasService: GiftIdeasService = GiftIdeasService(), wishlistService: WishlistService = WishlistService(), groupsService: GroupsService = GroupsService(), kidsService: KidsService = KidsService(), cache: BootstrapCache = .shared, retryDelays: [TimeInterval] = [5, 15, 30, 60]) {
+        self.cache = cache
+        self.retryDelays = retryDelays
         self.bootstrapService = bootstrapService
         self.usersService = usersService
         self.giftIdeasService = giftIdeasService
@@ -142,7 +199,7 @@ class WishlistViewModel: ObservableObject {
         } catch {
             elog("Failed to clear wishlist purchases: \(error)")
             AnalyticsEvents.error(code: "wishlist_purchases_clear_failed", message: error.localizedDescription, context: "clear_wishlist_purchases")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -167,15 +224,18 @@ class WishlistViewModel: ObservableObject {
         } catch {
             elog("Failed to restore hidden purchases: \(error)")
             AnalyticsEvents.error(code: "wishlist_purchases_restore_failed", message: error.localizedDescription, context: "show_all_purchases")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
 
     // Convenience to rebuild services with an auth-backed APIClient token provider
     func configureAuth(using auth: AuthViewModel) {
-        let provider: (Bool) async -> String? = { force in await auth.getValidIDToken(forceRefresh: force) }
-        let client = APIClient(tokenProvider: provider)
+        if case let .authenticated(userId) = auth.state { restoreFromCache(userId: userId) }
+        configure(client: APIClient(tokenProvider: { force in try await auth.getValidIDToken(forceRefresh: force) }))
+    }
+
+    func configure(client: APIClient, startLoading: Bool = true) {
         let bs = BootstrapService(client: client)
         let us = UsersService(client: client)
         let gis = GiftIdeasService(client: client)
@@ -194,7 +254,55 @@ class WishlistViewModel: ObservableObject {
         _kidsServiceOverride = ks
 
         // Now that auth is configured, kick off a fresh load
-        Task { await self.load() }
+        if startLoading { Task { await self.load() } }
+    }
+
+    /// Shows the last good data straight away, if there is any for this user.
+    func restoreFromCache(userId: String) {
+        guard currentUser == nil, let entry = cache.load(userId: userId) else { return }
+        apply(entry.data)
+        lastLoadedAt = entry.savedAt
+    }
+
+    private func apply(_ data: BootstrapData) {
+        currentUser = data.user
+        groups = data.groups
+        kids = data.kids
+        wishlistItems = data.wishlistItems
+        giftIdeas = data.giftIdeas
+        groupInvitations = data.invitations
+        removedPurchases = data.removedPurchases
+    }
+
+    /// Forgets the signed-in user, so the next account can't see any of their data. A load
+    /// still in flight is abandoned rather than allowed to write it back.
+    func resetForSignOut() {
+        loadGeneration += 1
+        retryTask?.cancel()
+        retryTask = nil
+        retryCount = 0
+        cache.clear()
+        loadFailure = nil
+        lastLoadedAt = nil
+        consecutiveLoadFailures = 0
+        currentUser = nil
+        groups = nil
+        kids = nil
+        wishlistItems = nil
+        giftIdeas = nil
+        groupInvitations = []
+        removedPurchases = []
+        needsProfileSetup = false
+        isLoading = false
+        errorMessage = nil
+
+        _authClientOverride = nil
+        _bootstrapServiceOverride = nil
+        _usersServiceOverride = nil
+        _giftIdeasServiceOverride = nil
+        _wishlistServiceOverride = nil
+        _groupsServiceOverride = nil
+        _kidsServiceOverride = nil
     }
 
     // MARK: - Service overrides when auth is configured
@@ -219,8 +327,9 @@ class WishlistViewModel: ObservableObject {
 //        #if DEBUG
 //        dlog("Starting bootstrap request: baseURL=\(AppConfig.api.baseURL.absoluteString) path=/bootstrap userId=\(AppConfig.devUserId.uuidString)")
 //        #endif
+        loadGeneration += 1
+        let generation = loadGeneration
         isLoading = true
-        errorMessage = nil
         do {
 //            #if DEBUG
 //            let mockData = MockDataService.createMockData()
@@ -230,25 +339,46 @@ class WishlistViewModel: ObservableObject {
 //            self.wishlistItems = mockData.wishlistItems
 //            self.giftIdeas = mockData.giftIdeas
 //            #else
-            let data = try await effectiveBootstrap.load()
-//            #endif
-            dlog("Bootstrap success: user=\(data.0.id) groups=\(data.1.count) kids=\(data.2.count) myItems=\(data.3.count) giftIdeas=\(data.4.count)")
-            self.currentUser = data.0
-            self.groups = data.1
-            self.kids = data.2
-            self.wishlistItems = data.3
-            self.giftIdeas = data.4
-            if data.5 {
-                // newly created account; surface a flag so UI can navigate to EditProfileView
-                NotificationCenter.default.post(name: Notification.Name("NewUserCreated"), object: nil)
+            let (data, isNewUser) = try await effectiveBootstrap.load()
+            // Before the check below: a newer load won't find the account new, because this one just created it.
+            if isNewUser, !needsProfileSetup, _authClientOverride != nil {
+                needsProfileSetup = true
                 AnalyticsEvents.signUp(method: AnalyticsAuthProvider.last())
             }
+            guard generation == loadGeneration else { return }
+//            #endif
+            dlog("Bootstrap success: user=\(data.user.id) groups=\(data.groups.count) kids=\(data.kids.count) myItems=\(data.wishlistItems.count) giftIdeas=\(data.giftIdeas.count)")
+            apply(data)
+            lastLoadedAt = Date()
+            loadFailure = nil
+            consecutiveLoadFailures = 0
+            retryCount = 0
+            cache.save(data)
         } catch {
-            elog("Bootstrap failed: \(String(describing: error))")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            guard generation == loadGeneration else { return }
+            if !error.isCancellation {
+                elog("Bootstrap failed: \(String(describing: error))")
+                recordLoadFailure(error)
+                scheduleRetry()
+            }
         }
         isLoading = false
         dlog("Bootstrap finished. isLoading=false")
+    }
+
+    private func recordLoadFailure(_ error: Error) {
+        let failure = error.loadFailure
+        loadFailure = failure
+        consecutiveLoadFailures += 1
+        // A long outage would otherwise report every retry.
+        guard consecutiveLoadFailures == 1 else { return }
+        var status = 0
+        if case let APIError.http(httpStatus, _, _, _, _) = error { status = httpStatus }
+        AnalyticsEvents.error(code: "bootstrap_load_failed", message: failure.rawValue, context: "load:\(status)")
+        // Being offline isn't a bug in the app.
+        if failure != .offline {
+            Crashlytics.crashlytics().record(error: NSError(domain: "BootstrapLoadFailure", code: status, userInfo: ["category": failure.rawValue]))
+        }
     }
 
     /// Sets how many of a group member's or kid's item the current user has bought. 0 clears their purchase.
@@ -287,11 +417,11 @@ class WishlistViewModel: ObservableObject {
             elog("Failed to set purchase quantity: \(String(describing: error))")
             updateGroupItem(item.id, groupId: groupId, groupMemberId: groupMemberId, kidId: kidId) { $0 = item }
             if let apiError = error as? APIError, case let .http(_, code, message, _, _) = apiError, code == "QUANTITY_EXCEEDED" {
-                // Someone else got there first, so the screen is out of date. `load` clears errorMessage, so set it after.
-                await refreshAll()
+                // Someone else got there first, so the screen is out of date.
                 self.errorMessage = message
+                await refreshAll()
             } else {
-                self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+                self.errorMessage = error.userFacingMessage
             }
             return false
         }
@@ -316,8 +446,11 @@ class WishlistViewModel: ObservableObject {
     }
 
     // Unified refresh entry point (can show loading spinner)
+    /// For pull to refresh. SwiftUI cancels a refresh's task when the screen redraws partway
+    /// through, which `load()` itself causes, and that cancelled the request before it was sent.
+    /// A task of its own isn't cancelled with it.
     func refreshAll() async {
-        await load()
+        await Task { await load() }.value
     }
     
     func addWishlistItem(_ item: WishlistItem, kidId: UUID?) async -> Bool {
@@ -353,7 +486,7 @@ class WishlistViewModel: ObservableObject {
                 WishlistViewModel.logger.error("Wishlist create failed: \(String(describing: error))")
             }
             #endif
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -372,7 +505,7 @@ class WishlistViewModel: ObservableObject {
                 groups?.append(created)
                 AnalyticsEvents.groupCreated(groupId: created.id)
             } catch {
-                self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+                self.errorMessage = error.userFacingMessage
             }
         }
     }
@@ -412,7 +545,7 @@ class WishlistViewModel: ObservableObject {
                 WishlistViewModel.logger.error("Wishlist update failed: \(String(describing: error))")
             }
             #endif
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -446,7 +579,7 @@ class WishlistViewModel: ObservableObject {
                 WishlistViewModel.logger.error("Gift idea create failed: \(String(describing: error))")
             }
             #endif
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -464,7 +597,7 @@ class WishlistViewModel: ObservableObject {
         return true
         } catch {
             AnalyticsEvents.error(code: "gift_idea_update_failed", message: error.localizedDescription, context: "update_gift_idea")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
         return false
         }
     }
@@ -481,7 +614,7 @@ class WishlistViewModel: ObservableObject {
         } catch {
             // Roll back on failure
             giftIdeas?[idx] = idea
-            await MainActor.run { self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error) }
+            await MainActor.run { self.errorMessage = error.userFacingMessage }
             return
         }
         if updated.isPurchased {
@@ -502,7 +635,7 @@ class WishlistViewModel: ObservableObject {
         return true
         } catch {
             AnalyticsEvents.error(code: "gift_idea_delete_failed", message: error.localizedDescription, context: "delete_gift_idea")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
         return false
         }
     }
@@ -555,7 +688,7 @@ class WishlistViewModel: ObservableObject {
             return true
         } catch {
             AnalyticsEvents.error(code: "wishlist_delete_failed", message: error.localizedDescription, context: "delete_wishlist_item")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -592,7 +725,7 @@ class WishlistViewModel: ObservableObject {
             return true
         } catch {
             AnalyticsEvents.error(code: "group_update_failed", message: error.localizedDescription, context: "rename_group")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -606,11 +739,78 @@ class WishlistViewModel: ObservableObject {
             return true
         } catch {
             AnalyticsEvents.error(code: "group_remove_member_failed", message: error.localizedDescription, context: "remove_member")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
     
+    /// Accepts or declines an invitation, then reloads so a joined group shows up.
+    func respondToInvitation(_ invitation: GroupInvitation, accept: Bool) async -> Bool {
+        do {
+            try await effectiveGroups.respondToInvitation(id: invitation.id, accept: accept)
+            AnalyticsEvents.groupInvitationAnswered(groupId: invitation.groupId, accepted: accept)
+            await load()
+            return true
+        } catch {
+            AnalyticsEvents.error(code: "group_invitation_answer_failed", message: error.localizedDescription, context: "respond_to_invitation")
+            self.errorMessage = error.userFacingMessage
+            return false
+        }
+    }
+
+    /// What a code leads to, or nil with `errorMessage` set. Nobody joins anything yet.
+    func previewInviteCode(_ code: String) async -> InviteCodePreview? {
+        do {
+            return try await effectiveGroups.previewInviteCode(Self.tidied(code: code))
+        } catch {
+            self.errorMessage = error.userFacingMessage
+            return nil
+        }
+    }
+
+    func joinGroup(code: String) async -> Bool {
+        do {
+            try await effectiveGroups.acceptInviteCode(Self.tidied(code: code))
+            AnalyticsEvents.groupJoinedWithCode()
+            await load()
+            return true
+        } catch {
+            AnalyticsEvents.error(code: "group_join_with_code_failed", message: error.localizedDescription, context: "join_group")
+            self.errorMessage = error.userFacingMessage
+            return false
+        }
+    }
+
+    /// The group's invite code. Pass `replacing` to make the current one stop working.
+    func inviteCode(for group: Group, replacing: Bool = false) async -> GroupInviteCode? {
+        do {
+            return try await effectiveGroups.inviteCode(groupId: group.id, replacing: replacing)
+        } catch {
+            AnalyticsEvents.error(code: "group_invite_code_failed", message: error.localizedDescription, context: "invite_code")
+            self.errorMessage = error.userFacingMessage
+            return nil
+        }
+    }
+
+    func leaveGroup(_ group: Group) async -> Bool {
+        guard let userId = currentUser?.id else { return false }
+        do {
+            try await effectiveGroups.removeMember(groupId: group.id, userId: userId)
+            groups?.removeAll(where: { $0.id == group.id })
+            AnalyticsEvents.groupLeft(groupId: group.id)
+            return true
+        } catch {
+            AnalyticsEvents.error(code: "group_leave_failed", message: error.localizedDescription, context: "leave_group")
+            self.errorMessage = error.userFacingMessage
+            return false
+        }
+    }
+
+    /// A typed code goes into a URL path, so nothing in it can be allowed to change that path.
+    private static func tidied(code: String) -> String {
+        code.filter { $0.isLetter || $0.isNumber }
+    }
+
     func addMemberToGroup(email: String, to group: Group) async -> Bool {
         do {
             try await effectiveGroups.addMember(groupId: group.id, email: email)
@@ -621,7 +821,7 @@ class WishlistViewModel: ObservableObject {
             return true
         } catch {
             AnalyticsEvents.error(code: "group_invite_failed", message: error.localizedDescription, context: "invite_member")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -636,7 +836,7 @@ class WishlistViewModel: ObservableObject {
             return true
         } catch {
             AnalyticsEvents.error(code: "group_remove_pending_invitation_failed", message: error.localizedDescription, context: "remove_pending_invitation")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -651,7 +851,7 @@ class WishlistViewModel: ObservableObject {
             return true
         } catch {
             AnalyticsEvents.error(code: "group_delete_failed", message: error.localizedDescription, context: "delete_group")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -671,7 +871,7 @@ class WishlistViewModel: ObservableObject {
             AnalyticsEvents.kidCreated(kidId: created.id)
             return true
         } catch {
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -689,7 +889,7 @@ class WishlistViewModel: ObservableObject {
             return true
         } catch {
             AnalyticsEvents.error(code: "kid_update_failed", message: error.localizedDescription, context: "update_kid")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -705,7 +905,7 @@ class WishlistViewModel: ObservableObject {
             return true
         } catch {
             AnalyticsEvents.error(code: "kid_delete_failed", message: error.localizedDescription, context: "delete_kid")
-            self.errorMessage = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+            self.errorMessage = error.userFacingMessage
             return false
         }
     }
@@ -720,6 +920,8 @@ class WishlistViewModel: ObservableObject {
         let quantity: Int
         /// When the current user last added to that count.
         let purchasedAt: Date?
+        /// The owner has deleted this item since the user bought it.
+        var isRemoved = false
     }
 
     /// Whether a purchase survives the cutoff the user set with their last clear.
@@ -755,6 +957,17 @@ class WishlistViewModel: ObservableObject {
                     collect(kid.wishlistItems, recipientName: kid.name)
                 }
             }
+        }
+
+        for removed in removedPurchases where !seen.contains(removed.itemId) {
+            let purchase = WishlistItemPurchase(userId: userId, quantity: removed.quantity, purchasedAt: removed.purchasedAt)
+            guard isPurchaseVisible(purchase) else { continue }
+            result.append(PurchasedItem(id: removed.itemId,
+                                        item: WishlistItem(id: removed.itemId, name: removed.itemName, price: removed.itemPrice),
+                                        recipientName: removed.recipientName,
+                                        quantity: removed.quantity,
+                                        purchasedAt: removed.purchasedAt,
+                                        isRemoved: true))
         }
 
         return result.sorted { ($0.purchasedAt ?? Date.distantPast) > ($1.purchasedAt ?? Date.distantPast) }

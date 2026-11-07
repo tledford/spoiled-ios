@@ -1,0 +1,5 @@
+// Debug settings for every target. Release builds don't use this file.
+//
+// To point runs from Xcode at a local worker, copy Local.xcconfig.example to Local.xcconfig
+// (git-ignored) and fill in your Mac's address. See "Environment switching" in AGENTS.md.
+#include? "Local.xcconfig"

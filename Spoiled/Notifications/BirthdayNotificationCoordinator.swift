@@ -62,12 +62,11 @@ final class BirthdayNotificationCoordinator: ObservableObject {
 
     /// Rebuild the pending reminders from current state.
     func rescheduleNow() async {
-        guard let viewModel, let settings else { return }
-        let people = BirthdayRoster.people(
+        guard let viewModel, let settings, let people = BirthdayRoster.peopleToRemind(
             currentUserId: viewModel.currentUser?.id,
             groups: viewModel.groups,
             kids: viewModel.kids
-        )
+        ) else { return }
         await BirthdayNotificationScheduler.reschedule(
             people: people,
             leadTimes: settings.enabledLeadTimes

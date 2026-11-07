@@ -11,10 +11,15 @@ struct EditGroupView: View {
     @State private var pendingInvitationToDelete: PendingInvitation?
     @State private var showingAddMemberSheet = false
     
-    let group: Group
-    
+    private let initialGroup: Group
+
+    /// The latest copy, so members and invitations update while this screen is open.
+    private var group: Group {
+        viewModel.groups?.first(where: { $0.id == initialGroup.id }) ?? initialGroup
+    }
+
     init(group: Group) {
-        self.group = group
+        initialGroup = group
         _name = State(initialValue: group.name)
     }
     
@@ -48,6 +53,7 @@ struct EditGroupView: View {
                                         .foregroundColor(.red)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Remove \(member.name)")
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
@@ -60,7 +66,8 @@ struct EditGroupView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "person.badge.plus")
-                                Text("Add Member")
+                                    .accessibilityHidden(true)
+                                Text("Invite by Email")
                             }
                             .foregroundStyle(Color.brandGold)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,6 +78,8 @@ struct EditGroupView: View {
                     }
                     .spoiledCard()
                 }
+
+                InviteLinkSection(group: group)
 
                 if !group.pendingInvitations.isEmpty {
                     // Pending Invitations
@@ -90,6 +99,7 @@ struct EditGroupView: View {
                                             .foregroundColor(.red)
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityLabel("Cancel invitation for \(pendingInvitation.email)")
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
@@ -216,7 +226,7 @@ struct AddGroupMemberView: View {
                         }
                         .spoiledCard()
                         
-                        Text("Enter the email address of the person you want to add to this group.")
+                        Text("They'll see the invitation in Spoiled if this is the email they sign in with, and they join only if they accept. Spoiled doesn't send an email, so let them know, or share the invite link instead.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 4)
@@ -227,7 +237,7 @@ struct AddGroupMemberView: View {
                 .padding(.bottom, 32)
             }
             .background(Color.appBackground.ignoresSafeArea())
-            .navigationTitle("Add Member")
+            .navigationTitle("Invite by Email")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -243,7 +253,7 @@ struct AddGroupMemberView: View {
                                 let ok = await viewModel.addMemberToGroup(email: email, to: group)
                                 if ok {
                                     await viewModel.refreshAll()
-                                    toastCenter.success("Member added")
+                                    toastCenter.success("Invitation added")
                                     dismiss()
                                 } else {
                                     toastCenter.error(viewModel.errorMessage ?? "Failed to add member")
@@ -253,7 +263,7 @@ struct AddGroupMemberView: View {
                             showingInvalidEmailAlert = true
                         }
                     } label: {
-                        Text("Add")
+                        Text("Invite")
                             .navButton(isIcon: false)
                     }
                     .disabled(email.isEmpty)

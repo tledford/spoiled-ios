@@ -30,7 +30,7 @@ npm run seed       # seed local D1 with test data
 npm run seed:reset # reset and re-seed
 ```
 
-To hit the local worker from the app, toggle `AppConfig.swift` (see Environment switching below).
+To hit the local worker from the app, see Environment switching below.
 
 ## Architecture
 
@@ -58,6 +58,16 @@ To hit the local worker from the app, toggle `AppConfig.swift` (see Environment 
 
 The app loads all state in a single call to `GET /api/v1/bootstrap`. `BootstrapService` decodes the response into `API*` intermediary types, then maps them to app models. If the user doesn't exist (404 `NOT_FOUND`), it auto-creates the user and retries.
 
+### When a load fails
+
+`WishlistViewModel.load()` reports through `loadFailure`, never `errorMessage`, which is only for saves. `ContentView` shows the tabs only once there's a `currentUser`; otherwise it shows `ConnectionErrorView`, so a failed load can't pass for an empty account. With data on screen, `StaleDataBanner` says it may be out of date. It sits above the tab bar, added to each tab's root screen with `.staleDataBanner()`. Don't move it to the top: the navigation bar covers it from outside the `NavigationStack`, and from inside, tabs opened while it shows lose their large title.
+
+Pull to refresh goes through `refreshAll()`, which runs `load()` in a task of its own. SwiftUI cancels a refresh's task when the screen redraws, and `load()` redraws it straight away.
+
+Failed loads retry at 5, 15, 30 and 60 seconds, then wait for the 5-minute timer, and retry immediately when `ConnectionMonitor` sees the connection return. `BootstrapCache` keeps the last good bootstrap on disk so the app opens with data offline, and is deleted on sign-out. There is no offline queue: saves fail and roll back.
+
+Show errors with `error.userFacingMessage`. Status codes and request IDs belong in logs.
+
 ### Dual model pattern
 
 Every resource has:
@@ -70,9 +80,15 @@ Conversion happens via `asAppModel()` extension methods in `BootstrapService.swi
 
 `WishlistItem` has a `quantityDesired` (default 1, up to 99) and `purchases`, one entry per person who bought some. `isPurchased` is computed: the total bought has reached `quantityDesired`. Members change only their own count, through `WishlistViewModel.setItemPurchaseQuantity`. `purchases` is only populated on group copies of an item; the API sends it empty on the owner's own copies, so owners can't see what's been bought. Check `isInGroupView` before showing purchase state.
 
+### Joining groups
+
+Nobody joins a group without agreeing. Admins invite by email, which only creates a pending invitation, or share the group's invite link. An email invitation appears in `WishlistViewModel.groupInvitations` when it matches the verified address on the user's token, and Spoiled sends no email. Invite links (`https://prod.tomled.dev/invite/<code>`) arrive through `.onOpenURL` in `SpoiledApp` and are held in the `pendingInviteCode` app storage until `ContentView` can show `JoinGroupView`, so they survive sign-in. Someone installing the app from the link's landing page types the code instead, since there are no deferred deep links. Every path ends at a screen saying what joining shares (`GroupSharingNotice`).
+
 ### 401 auto-retry
 
-`APIClient.execute()` retries once with a force-refreshed Firebase ID token on HTTP 401. If it still fails, it posts `Notification.Name.authUnauthorized`, which `SpoiledApp` listens to in order to sign the user out.
+`APIClient.execute()` retries once with a force-refreshed Firebase ID token on HTTP 401. It posts `Notification.Name.authUnauthorized`, which `SpoiledApp` listens to in order to sign the user out, only when the session has really ended: the refreshed token was rejected too, or Firebase reports the session is over (`FirebaseSession.isSessionOver`).
+
+Anything temporary must not sign the user out. If a token can't be fetched for another reason, like having no connection, `execute()` throws `APIError.tokenUnavailable` and sends nothing. The worker returns 503 `AUTH_UNAVAILABLE`, not 401, when it can't check a token.
 
 ### Share extension
 
@@ -103,12 +119,13 @@ kids' wishlists, or a gift idea.
 
 ### Environment switching
 
-`AppConfig.swift` has two commented lines. Toggle the comment to switch between the local worker (`../spoiled-api-cf` running on `npm run dev`) and production:
+Builds use production unless a Debug build is given a local worker's address. Release builds always use production; `AppConfig` reads the address only under `#if DEBUG`.
 
-```swift
-// static var api = APIConfig(scheme: "http", host: "192.168.1.178", port: 8787, version: "v1") // Local dev
-static var api = APIConfig(scheme: "https", host: "prod.tomled.dev", version: "v1") // CF Worker
-```
+- **On the iPhone:** `./build-deploy.sh --local [port]` finds this Mac's network address and passes it as build settings. The default port is 8788, because something else on this Mac usually holds 8787.
+- **From Xcode:** copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` (git-ignored) and fill it in. Delete it to go back to production.
+- **The worker:** `npm run dev -- --port 8788` in `../spoiled-api-cf`.
+
+`SPOILED_LOCAL_API_HOST` and `SPOILED_LOCAL_API_PORT` reach the app through the `SpoiledLocalAPIHost` and `SpoiledLocalAPIPort` keys in both targets' Info.plist.
 
 ### Adding a new service method
 
@@ -135,6 +152,12 @@ Screen tracking uses the `.trackScreen("ScreenName")` view modifier applied to t
 ### `OkResponse`
 
 API calls that return no meaningful body use a shared `OkResponse` decodable type (defined in one of the service files). Discard the result with `_ = try await client.execute(...)`.
+
+### Text sizes and VoiceOver
+
+Text has to grow with Dynamic Type. Use a text style (`.font(.subheadline.weight(.semibold))`), or `.scaledFont(size:relativeTo:)` for display sizes no style matches. Don't use `.font(.system(size:))`. Rows with several columns stack at accessibility sizes (`dynamicTypeSize.isAccessibilitySize`, with `AnyLayout` so views keep their identity).
+
+Icon-only buttons need an `.accessibilityLabel`. Decorative icons get `.accessibilityHidden(true)`, and section titles get the `.isHeader` trait.
 
 ### Debug logging
 

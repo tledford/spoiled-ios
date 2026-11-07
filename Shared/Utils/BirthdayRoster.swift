@@ -52,4 +52,11 @@ enum BirthdayRoster {
 
         return people
     }
+
+    /// Who reminders should be scheduled for, or nil before the first load. Until then there's
+    /// no roster to go on, so the reminders already scheduled have to be left alone.
+    static func peopleToRemind(currentUserId: String?, groups: [Group]?, kids: [Kid]?) -> [BirthdayPerson]? {
+        guard currentUserId != nil else { return nil }
+        return people(currentUserId: currentUserId, groups: groups, kids: kids)
+    }
 }

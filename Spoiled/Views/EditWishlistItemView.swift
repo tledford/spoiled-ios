@@ -87,7 +87,7 @@ struct EditWishlistItemView: View {
                                 }
                             )) {
                                 Label("All Groups", systemImage: "person.3.fill")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.subheadline.weight(.semibold))
                             }
                             .tint(.brandGold)
                             .padding(.horizontal, 16)

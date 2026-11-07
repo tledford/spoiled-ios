@@ -78,14 +78,14 @@ struct ClearPurchasedItemsView: View {
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text(summaryText)
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.subheadline.weight(.semibold))
                             if scope == .before {
                                 Text("Purchases made on \(cutoffDate.formatted(date: .abbreviated, time: .omitted)) or later stay in the report.")
-                                    .font(.system(size: 13))
+                                    .font(.footnote)
                                     .foregroundStyle(.secondary)
                             }
                             Text("Cleared purchases are only hidden from your report and home screen. They stay marked as purchased for everyone else. Show All Purchases brings them back.")
-                                .font(.system(size: 13))
+                                .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

@@ -113,7 +113,7 @@ struct SplashView: View {
 
             VStack(spacing: 8) {
                 Text("Spoiled")
-                    .font(.system(size: 52, weight: .black, design: .default))
+                    .scaledFont(size: 52, relativeTo: .largeTitle, weight: .black)
                     .foregroundStyle(
                         LinearGradient(
                             colors: [.white, Color.white.opacity(0.85)],
@@ -124,7 +124,7 @@ struct SplashView: View {
                     .tracking(-1)
 
                 Text("Group wishlists for stress-free gift giving")
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.callout.weight(.regular))
                     .foregroundStyle(Color.white.opacity(0.55))
                     .multilineTextAlignment(.center)
             }

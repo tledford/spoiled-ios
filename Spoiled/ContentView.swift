@@ -2,12 +2,13 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var wishlistViewModel: WishlistViewModel
+    @EnvironmentObject private var auth: AuthViewModel
     @EnvironmentObject private var toastCenter: ToastCenter
     @EnvironmentObject private var notificationSettings: BirthdayNotificationSettings
     @EnvironmentObject private var notifications: BirthdayNotificationCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var showEditProfile = false
     @State private var showNotificationPrimer = false
+    @AppStorage("pendingInviteCode") private var pendingInviteCode = ""
     @Namespace private var giftNamespace
 
     /// Held for a beat so the cover cannot flash by on a fast connection.
@@ -19,17 +20,26 @@ struct ContentView: View {
     private static let coverTimeoutSeconds: UInt64 = 15
 
     /// The cover stays up until the first bootstrap lands, and never for less than
-    /// `minimumCoverSeconds`. An error or the timeout releases it too, so a failed load
-    /// shows the real (empty) app and its toast rather than an endless gift.
+    /// `minimumCoverSeconds`. A failure or the timeout releases it too, so a stalled or
+    /// failed load gets an explanation rather than an endless gift.
     private var isInitialLoading: Bool {
         if coverTimedOut { return false }
-        let dataSettled = wishlistViewModel.currentUser != nil || wishlistViewModel.errorMessage != nil
+        let dataSettled = wishlistViewModel.currentUser != nil || wishlistViewModel.loadFailure != nil
         return !(minimumCoverElapsed && dataSettled)
     }
 
     var body: some View {
         ZStack {
-            tabs
+            // The tabs need data. Without it they'd make a failed load look like an empty account.
+            if wishlistViewModel.currentUser != nil {
+                tabs
+            } else if !isInitialLoading {
+                ConnectionErrorView(
+                    failure: wishlistViewModel.loadFailure,
+                    onRetry: { Task { await wishlistViewModel.load() } },
+                    onSignOut: { auth.signOut() }
+                )
+            }
             if isInitialLoading {
                 AppLoadingView(namespace: giftNamespace)
                     .transition(.opacity)
@@ -61,6 +71,7 @@ struct ContentView: View {
             Tab("Groups", systemImage: "person.3.fill") {
                 GroupsView()
             }
+            .badge(wishlistViewModel.groupInvitations.count)
             Tab("Gift Ideas", systemImage: "lightbulb.fill") {
                 GiftIdeasView()
             }
@@ -74,13 +85,22 @@ struct ContentView: View {
             }
         }
         .toast(toastCenter)
-        .sheet(isPresented: $showEditProfile) {
+        .sheet(isPresented: $wishlistViewModel.needsProfileSetup) {
             EditProfileView(viewModel: wishlistViewModel)
                 .environmentObject(toastCenter)
         }
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NewUserCreated"))) { _ in
-            toastCenter.info("Welcome! Let's finish setting up your profile.")
-            showEditProfile = true
+        .onChange(of: wishlistViewModel.needsProfileSetup, initial: true) { _, needsSetup in
+            if needsSetup {
+                toastCenter.info("Welcome! Let's finish setting up your profile.")
+            } else {
+                Task { await maybePrimeNotifications() }
+            }
+        }
+        .sheet(isPresented: showInviteLink) {
+            JoinGroupView(code: pendingInviteCode)
+                .environmentObject(wishlistViewModel)
+                .environmentObject(toastCenter)
+                .toast(toastCenter)
         }
         .sheet(isPresented: $showNotificationPrimer) {
             BirthdayNotificationPrimerSheet()
@@ -95,8 +115,17 @@ struct ContentView: View {
         .task { await maybePrimeNotifications() }
     }
 
+    /// An invite link is waiting, and there's a signed-in user to act on it.
+    private var showInviteLink: Binding<Bool> {
+        Binding(
+            get: { !pendingInviteCode.isEmpty && wishlistViewModel.currentUser != nil },
+            set: { if !$0 { pendingInviteCode = "" } }
+        )
+    }
+
     private func maybePrimeNotifications() async {
-        guard wishlistViewModel.currentUser != nil, !notificationSettings.hasPrimed else { return }
+        // Only one sheet can show at a time, and the profile comes first.
+        guard wishlistViewModel.currentUser != nil, !notificationSettings.hasPrimed, !wishlistViewModel.needsProfileSetup else { return }
         await notifications.refreshAuthorizationStatus()
         if notifications.shouldPrime(hasLoadedUser: true, hasPrimed: notificationSettings.hasPrimed) {
             showNotificationPrimer = true
@@ -124,7 +153,7 @@ private struct BirthdayNotificationPrimerSheet: View {
     private var content: some View {
         VStack(spacing: 20) {
             Image(systemName: "birthday.cake.fill")
-                .font(.system(size: 44))
+                .scaledFont(size: 44, relativeTo: .largeTitle)
                 .foregroundStyle(Color.brandGold)
 
             Text("Never Miss a Birthday")
@@ -145,7 +174,7 @@ private struct BirthdayNotificationPrimerSheet: View {
                 }
             } label: {
                 Text("Turn On Reminders")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.callout.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
             }

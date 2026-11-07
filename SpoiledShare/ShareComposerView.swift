@@ -110,12 +110,12 @@ struct ShareComposerView: View {
             HStack(spacing: 10) {
                 leading()
                 Text(label)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(.primary)
                 Spacer()
                 if model.destination == destination {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .semibold))
+                        .scaledFont(size: 14, relativeTo: .subheadline, weight: .semibold)
                         .foregroundStyle(Color.brandGold)
                 }
             }
@@ -130,7 +130,7 @@ struct ShareComposerView: View {
         ZStack {
             Circle().fill(Color.brandGold.opacity(0.18))
             Image(systemName: systemName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.brandGold)
         }
         .frame(width: 28, height: 28)
@@ -207,7 +207,7 @@ struct ShareComposerView: View {
                     }
                 )) {
                     Label("All Groups", systemImage: "person.3.fill")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                 }
                 .tint(.brandGold)
                 .padding(.horizontal, 16)
@@ -243,7 +243,7 @@ struct ShareComposerView: View {
     private func statusMessage(icon: String, title: String, message: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: icon)
-                .font(.system(size: 44, weight: .light))
+                .scaledFont(size: 44, relativeTo: .largeTitle, weight: .light)
                 .foregroundStyle(Color.brandGold.opacity(0.8))
             Text(title)
                 .font(.headline)

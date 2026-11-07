@@ -4,7 +4,7 @@ struct CreateGroupResponse: Decodable { let id: UUID }
 
 private struct CreateGroupPayload: Encodable { let id: UUID?; let name: String }
 private struct RenameGroupPayload: Encodable { let name: String }
-private struct AddMemberPayload: Encodable { let userId: String?; let email: String?; let role: String? }
+private struct AddMemberPayload: Encodable { let email: String; let role: String? }
 
 private struct CreateGroupRequest: APIRequest {
     typealias Response = CreateGroupResponse
@@ -37,10 +37,50 @@ private struct AddMemberRequest: APIRequest {
     let method: String = "POST"
     let body: Data?
 
-    init(groupId: UUID, userId: String? = nil, email: String? = nil, role: String? = nil) {
+    init(groupId: UUID, email: String, role: String? = nil) {
         self.path = "/groups/\(groupId.uuidString)/members"
-        let payload = AddMemberPayload(userId: userId, email: email, role: role)
+        let payload = AddMemberPayload(email: email, role: role)
         self.body = try? JSONEncoder().encode(payload)
+    }
+}
+
+private struct InviteCodeRequest: APIRequest {
+    typealias Response = GroupInviteCode
+    let path: String
+    let method: String
+
+    init(groupId: UUID, replacing: Bool) {
+        self.path = "/groups/\(groupId.uuidString)/invite-code"
+        self.method = replacing ? "POST" : "GET"
+    }
+}
+
+private struct InviteCodePreviewRequest: APIRequest {
+    typealias Response = InviteCodePreview
+    let path: String
+
+    init(code: String) {
+        self.path = "/invite-codes/\(code)"
+    }
+}
+
+private struct AcceptInviteCodeRequest: APIRequest {
+    typealias Response = OkResponse
+    let path: String
+    let method: String = "POST"
+
+    init(code: String) {
+        self.path = "/invite-codes/\(code)/accept"
+    }
+}
+
+private struct RespondToInvitationRequest: APIRequest {
+    typealias Response = OkResponse
+    let path: String
+    let method: String = "POST"
+
+    init(invitationId: String, accept: Bool) {
+        self.path = "/invitations/\(invitationId)/\(accept ? "accept" : "decline")"
     }
 }
 
@@ -71,8 +111,20 @@ struct GroupsService {
         _ = try await client.execute(AddMemberRequest(groupId: groupId, email: email, role: role))
     }
 
-    func addMember(groupId: UUID, userId: String, role: String? = nil) async throws {
-        _ = try await client.execute(AddMemberRequest(groupId: groupId, userId: userId, role: role))
+    func inviteCode(groupId: UUID, replacing: Bool) async throws -> GroupInviteCode {
+        try await client.execute(InviteCodeRequest(groupId: groupId, replacing: replacing))
+    }
+
+    func previewInviteCode(_ code: String) async throws -> InviteCodePreview {
+        try await client.execute(InviteCodePreviewRequest(code: code))
+    }
+
+    func acceptInviteCode(_ code: String) async throws {
+        _ = try await client.execute(AcceptInviteCodeRequest(code: code))
+    }
+
+    func respondToInvitation(id: String, accept: Bool) async throws {
+        _ = try await client.execute(RespondToInvitationRequest(invitationId: id, accept: accept))
     }
 
     func removeMember(groupId: UUID, userId: String) async throws {

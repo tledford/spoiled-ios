@@ -28,7 +28,7 @@ protocol AuthStore: AnyObject {
     func handleAppleAccountDeletionCompletion(_ result: Result<ASAuthorization, Error>)
     func deleteCurrentUserWithoutApple() async
     func isCurrentUserApple() -> Bool
-    func getValidIDToken(forceRefresh: Bool) async -> String?
+    func getValidIDToken(forceRefresh: Bool) async throws -> String?
     func signOut()
 }
 
@@ -174,17 +174,8 @@ final class DefaultAuthStore: AuthStore {
         stateSubject.send(.unauthenticated)
     }
 
-    func getValidIDToken(forceRefresh: Bool) async -> String? {
-        guard let user = Auth.auth().currentUser else { return nil }
-        if forceRefresh {
-            if let result = try? await user.getIDTokenResult(forcingRefresh: true) {
-                return result.token
-            } else {
-                return try? await user.getIDToken()
-            }
-        } else {
-            return try? await user.getIDToken()
-        }
+    func getValidIDToken(forceRefresh: Bool) async throws -> String? {
+        try await FirebaseSession.tokenProvider(forceRefresh)
     }
 
     
